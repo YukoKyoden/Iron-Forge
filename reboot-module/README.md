@@ -1,12 +1,12 @@
-# Iron Forge — Geological Mining Preview (0.7.0 alpha)
+# Iron Forge — Geological Mining Preview (0.7.4 alpha)
 **Development branch**: `reboot/kingdom-warfare-core`. This preview temporarily includes the legacy v0.6 warfare features while the Recruits-style reboot is built. It is NOT the finished reboot game.
 
 ## In-game test
 1. Back up your Minecraft Forge 1.20.1 world.
 2. Remove the older `kingdomsatwar-*.jar` before placing the new compiled JAR in `mods`. Never install both.
 3. Create a kingdom with the existing War Table or `/war found MyKingdom`.
-4. Dig down into a **claimed chunk**, between Y -55 and Y 55.
-5. Craft or get a **Mine Controller**: `/give @s kingdomsatwar:mine_controller`. Place it underground.
+4. Dig down underground **anywhere**, between Y -55 and Y 55. You only need to belong to a kingdom; manual chunk claims are no longer required.
+5. Craft or get a **Mine Controller**: `/give @s kingdomsatwar:mine_controller`. Place it underground. No chunk claim is required.
 6. Dig a walkable underground tunnel with **stone/deepslate/other rock around it**. Create a 3-block-high passage.
 7. Place **Timber Supports**: `/give @s kingdomsatwar:mine_support`. Supports must have 4+ natural-looking rock cells sampled at 2–3 blocks away on horizontal sides, open tunnel passage along an axis, and 8 blocks of spacing from other supports. Limit 24 supports, within 48 blocks of controller and 18 vertical.
 8. Right-click the Mine Controller to see deposit richness (1–5), remaining reserves, support count, assigned workers and iron/min.
