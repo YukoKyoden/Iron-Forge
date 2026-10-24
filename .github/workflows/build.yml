@@ -26,6 +26,8 @@ jobs:
         run: git show d18f39bab92e06e0b912fd3aba457e14b5b69a8e:iron-forge-source.tar.xz | tar -xJf -
       - name: Apply Iron Forge 0.3 upgrade
         run: xz -dc iron-forge-v030.patch.xz | patch --batch -p4
+      - name: Repair command registration nesting
+        run: sed -i '32s/$/)/;34s/$/)/;65s/);/));/' src/main/java/com/kingdomsatwar/WarCommands.java
       - name: Test kingdom and warfare strategy
         run: |
           mkdir -p build/simtest
