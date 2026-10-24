@@ -1,1 +1,16 @@
-{"variants":{"":{"model":"kingdomsatwar:block/mine_controller"}}}\n
+{
+  "variants": {
+    "facing=north": {
+      "model": "kingdomsatwar:block/mine_controller"
+    },
+    "facing=south": {
+      "model": "kingdomsatwar:block/mine_controller"
+    },
+    "facing=west": {
+      "model": "kingdomsatwar:block/mine_controller"
+    },
+    "facing=east": {
+      "model": "kingdomsatwar:block/mine_controller"
+    }
+  }
+}
