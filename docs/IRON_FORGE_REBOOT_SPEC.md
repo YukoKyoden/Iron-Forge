@@ -138,6 +138,31 @@ All units have owner kingdom, group ID, home/rally position, morale/health, gear
 ### Town conquest release gate
 A **real client playtest** must demonstrate: build a town → defend with watchmen → trigger an invasion alert → use a reinforcement order → fight near the banner → see capture progress and War Table status → capture and receive legitimate town production → save/reload ownership. Add both one-player AI and two-kingdom multiplayer integration tests before release.
 
+## Town economy without terrain scanning
+**Decision:** A town's resource production is a lightweight, server-side settlement simulation, NOT a count of farmland, ore, trees, or blocks found by scanning huge map areas.
+
+### Registration and source of truth
+- A Town Hall uniquely registers a bounded settlement with a persistent town ID, tier, owners, and approved production sites (farm, mine, quarry, lumberyard, trade post) as **building records**. Each site is registered by player action, with location and level. Render real structures in Minecraft, but do not require ongoing multichunk block scans.
+- Towns may have a designated specialization (farming, mining, trade, garrison). A captured or neutral town retains its building records when ownership changes.
+- Building slots, workers, supply costs and upgrades limit production to prevent unlimited output by spamming controllers. Income is not computed from claimed chunk area.
+- The kingdom warehouse holds item quantities in a durable virtual resource ledger. A town may have its own capacity/stock and transfer to the kingdom warehouse by an explicit supply route or settlement logistics rule; avoid silently teleporting supplies in an optional caravan mode.
+- Mines represent finite or renewable **abstract deposits** according to balance settings. If using finite reserves, reduce deposit values atomically per payout; never mine actual world ore blocks invisibly. Vanilla players may still physically gather items and deposit them into the ledger.
+
+### Calculation and cadence
+- Every 60 seconds of server simulation, compute resources for towns in one cheap pass without loading chunks:
+  `gross_output(resource) = sum_over_registered_buildings(base_rate(level,resource) * worker_utilization * town_efficiency)`.
+  `net_output = gross_output - explicitly modeled upkeep/consumption`.
+- `worker_utilization` is 0..1 derived from capped assigned staffed slots; `town_efficiency` includes supply shortages, occupation penalty, damage, and morale if enabled. Use integer fixed-point accounting / fractional carry to avoid rounding exploits.
+- A maximum timestamp catch-up window after server restarts avoids infinite offline production; by default progress only during server runtime. Never tick resource-producing block entities per item or continuously search containers.
+- Handle warehouse capacity, concurrent UI withdrawals and building payouts with server-authoritative, atomic transactions; avoid item duplication on save/load and conquest.
+- Illustrative example only: Level 2 farm +12 food/min; Level 1 iron mine +3 iron/min; Level 1 quarry +5 stone/min; Level 1 lumberyard +8 wood/min; town upkeep -4 food/min. Final balancing needs gameplay tests.
+- Player-facing UI shows current stored amounts, gross production, upkeep, net per minute, staffed slots, blocked production reasons, warehouse capacity and town occupation state.
+
+### Capture economy rules
+- Conquest transfers town control and its future production/registered structures once the Town Banner capture transaction resolves. Apply temporary occupation efficiency penalty until stabilization.
+- Battle loot is separate from new town production. A winning army recovers a controlled fraction of defeated army's actually allocated supplies, not automatically all the old kingdom's warehouse.
+- Test towns registered across chunk unloads, repeated captures, 100+ towns simultaneous, server restarts, zero workers, empty food, finite mine exhaustion, fractional rates, and concurrent warehouse claims.
+
 ## Implementation milestones and acceptance gates
 **M1: Playable defense vertical slice.** Banner + warehouse + barracks + three unit types + basic combat + watchtower + alert/redstone + HUD rally + save persistence. Must compile, boot server, pass unit tests, work in one real client world. No claim of full game before this.
 **M2: Tactical war loop.** Squad formations, patrol/hold/retreat, ranged attacks, cavalry mounts, enemy squads, battle objectives, casualty roster persistence, War Table battlefield reports, non-duplicating battle-spoils claims, and a physically contested Town Banner capture objective.
