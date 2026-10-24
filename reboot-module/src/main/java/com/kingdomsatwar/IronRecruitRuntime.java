@@ -40,7 +40,7 @@ public final class IronRecruitRuntime {
             tell(player,"Hiring costs 16 emeralds. Hold a full stack of at least 16.");return;
         }
         int nearby=level.getEntitiesOfClass(IronRecruit.class,new AABB(player.blockPosition()).inflate(96),
-            recruit->kingdom().equals(kingdom.id)).size();
+            recruit->recruit.kingdom().equals(kingdom.id)).size();
         if(nearby>=16){tell(player,"Maximum 16 active recruits for your kingdom in this area.");return;}
         IronRecruit recruit=IronRecruitRegistry.SOLDIER.get().create(level);
         if(recruit==null){tell(player,"Failed to create soldier.");return;}
