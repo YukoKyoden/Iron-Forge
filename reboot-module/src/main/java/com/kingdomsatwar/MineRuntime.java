@@ -47,8 +47,8 @@ public final class MineRuntime {
         String dimension=dim(level);
         MineEconomy model=get(player.server);
         if(controller){
-            WarState.Claim claim=game.claimAt(dimension,WarState.chunk(p.getX()),WarState.chunk(p.getZ()));
-            if(claim==null||!claim.owner.equals(k.id)){tell(player,"A mine controller must be on your kingdom's claimed land.");return;}
+            // No manual chunk claims required: kingdom membership identifies ownership.
+            // Town Hall territories will replace the prototype's chunk-clicking system.
             MineEconomy.Result r=model.register(k.id,dimension,player.serverLevel().getSeed(),p.getX(),p.getY(),p.getZ());
             tell(player,r.message());
             if(r.ok())save();
@@ -89,7 +89,7 @@ public final class MineRuntime {
     public void interact(ServerPlayer player,BlockPos pos){
         MineEconomy model=get(player.server);
         MineEconomy.Mine mine=model.get(MineEconomy.key(dim(player.level()),pos.getX(),pos.getY(),pos.getZ()));
-        if(mine==null){tell(player,"Inactive controller. Place it in claimed underground territory.");return;}
+        if(mine==null){tell(player,"Inactive controller. Place underground and register while part of a kingdom.");return;}
         WarState.Kingdom k=KingdomsAtWar.instance().get(player.server).kingdom(player.getUUID());
         if(k==null||!k.id.equals(mine.owner)){tell(player,"This mine belongs to another kingdom.");return;}
         if(player.isShiftKeyDown()){
