@@ -7,6 +7,32 @@ A Minecraft-native, Recruits-inspired kingdom defense and warfare game. Players 
 
 We are **inspired** by Villager Recruits; we will not copy its proprietary code or assets. Initially build independent Forge entities rather than require or modify the third-party mod. Compatibility can be evaluated separately.
 
+## Mine construction chest and automatic blueprints (new design decision)
+**Replace the broken v0.7.4 timber-support placement rules.** This section describes the desired next implementation, NOT features available in the current alpha.
+
+### Player loop
+1. Locate a promising rocky site with a prospector / controller survey; the location determines a persistent, finite geological deposit based on world seed and dimension. Placed ore cannot change it.
+2. Place a **Mine Controller**. Right-click to open a **construction chest GUI** with material storage, a simple blueprint preview, deposit rating, and **Build** button. This is the primary interaction; do not require manually placing or validating invisible support blocks.
+3. Choose and rotate a supported template (first MVP template: compact starter iron mine, e.g. 9x9 entrance building with safe bounded underground tunnel). Show a **ghost outline and footprint before starting** so the player can reposition it and know exactly what will be built.
+4. Deposit actual vanilla materials into the controller (initial placeholder: 64 logs, 128 stone, 16 iron ingots); show `64/64` etc. Surplus remains recoverable. Use a persistent, server-owned inventory with hopper/capability rules rather than fake chest UI; support normal item transfer.
+5. **Build only when funded and site preflight succeeds.** Preflight must check complete blueprint footprint for solid/protected structures and block entities, enforce terrain/ground rules and land ownership, and use low bounded per-tick changes to avoid freezes. No auto-force-loaded chunks, no accidental overwriting of player blocks, chests, or other structures. For excavation, limit to natural stone/deepslate and never silently destroy containers, ore, or protected blocks. If unsafe, refuse with clear obstruction position or require player excavation.
+6. Atomically reserve/deduct required materials once. Save construction job with blueprint, orientation, funded status and next block cursor. Construct visible frames, supports, equipment and building over a short simulated period. Resume safely after reload, no double-charge; refund remaining materials when canceling a job if that is supported.
+7. Completing a mine automatically activates its tier-1 production. The **generated timber supports are visual construction elements**, not manually placeable production exploits. Assign workers in the same menu; production bounded by level, deposit quality, staff, upkeep and remaining reserve, not the number of support blocks someone places.
+8. For each upgrade, deposit more materials in the controller to unlock and automatically build a new safe **planned mine section**. Confirm preview and terrain feasibility. Output rises according to tier and staff, within the deposit's available yield and a configurable production cap. Mining deposits can eventually exhaust; players must expand or establish a new site.
+9. Output flows to the persistent kingdom resource ledger/warehouse. The construction input chest and the warehouse stock are **separate**. In the complete warehouse release allow real ingot withdrawal; do not claim withdrawal exists in v0.7.4.
+
+### Example first-tier blueprint (balancing placeholders, not final)
+- `Iron Mine I`: 64 logs + 128 stone + 16 iron ingots; 9x9 entrance, 3x3 walkable tunnel for a bounded length; max 2 workers; production `2 * workers * geological_quality_factor` per minute, limited by reserve and warehouse space.
+- `Iron Mine II`: 96 logs + 192 stone + 32 iron ingots; extends an adjacent surveyed section; max 4 workers. Costs and rates require playtesting.
+- Never create vanilla items out of thin air during construction or take materials from arbitrary nearby chests without explicit designation/permission.
+
+### Acceptance criteria
+- Create kingdom -> find suitable site -> place controller -> open a real inventory UI -> deposit materials -> confirm preview -> click Build -> watch physical blocks get placed -> assign workers -> observe iron -> save/reload -> keep progress.
+- With insufficient materials, no build and no item loss. With obstruction, refuse before charging; never damage unrelated structures.
+- Duplication tests: simultaneous UI access, shift-click, hoppers, reload mid-build, cancellation, and breaking the controller.
+- The old support placement / eight-cardinal-rock-sample system is deprecated, as are all instructions that require players to place support blocks by hand.
+- Distinguish **design** from **shipped**: current v0.7.4 still implements old supports. Use a new version once block entity, GUI, and blueprint builder have actually compiled and passed live Forge checks.
+
 ## Territory without manual chunk claiming (design decision Oct 2026)
 - **No clicking or manually selecting chunks for normal Iron Forge gameplay.** The old claim-grid workflow is deprecated. In the live mining preview, registering a Mine Controller requires kingdom membership and valid geology, **not any claimed chunk**.
 - In the full reboot, **placing a Town Hall / Town Banner creates one automatically managed, bounded territory** (initial proposal 96 block radius, configurable). Show its border and settlement status on the War Table, not individual claim squares.
