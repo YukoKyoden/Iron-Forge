@@ -46,6 +46,8 @@ jobs:
         run: cp ci/WarRegressionTest.java src/test/java/com/kingdomsatwar/WarRegressionTest.java
       - name: Apply v0.5 AI campaign, economy, and War Table changes
         run: base64 -d patches/v050.b64 | xz -dc | patch --batch -p1
+      - name: Apply v0.6 army combat logistics and UI
+        run: base64 -d patches/v060.b64 | xz -dc | patch --batch -p1
       - name: Verify command permissions and registration
         run: |
           python3 - <<'PY'
@@ -62,19 +64,20 @@ jobs:
       - name: Test kingdom and warfare strategy
         run: |
           mkdir -p build/simtest
-          javac --release 17 -d build/simtest src/main/java/com/kingdomsatwar/WarState.java src/test/java/com/kingdomsatwar/WarStateTest.java src/test/java/com/kingdomsatwar/WarRegressionTest.java src/test/java/com/kingdomsatwar/WarCampaignTest.java
+          javac --release 17 -d build/simtest src/main/java/com/kingdomsatwar/WarState.java src/test/java/com/kingdomsatwar/WarStateTest.java src/test/java/com/kingdomsatwar/WarRegressionTest.java src/test/java/com/kingdomsatwar/WarCampaignTest.java src/test/java/com/kingdomsatwar/WarArmySystemsTest.java
           java -cp build/simtest com.kingdomsatwar.WarStateTest
           java -cp build/simtest com.kingdomsatwar.WarRegressionTest
           java -cp build/simtest com.kingdomsatwar.WarCampaignTest
+          java -cp build/simtest com.kingdomsatwar.WarArmySystemsTest
       - name: Build Forge 1.20.1 jar
         run: gradle --no-daemon --stacktrace clean build
       - name: Validate mod jar
         run: |
-          test -f build/libs/kingdomsatwar-0.5.0-alpha.jar
-          jar tf build/libs/kingdomsatwar-0.5.0-alpha.jar | grep -q 'META-INF/mods.toml'
-          jar tf build/libs/kingdomsatwar-0.5.0-alpha.jar | grep -q 'com/kingdomsatwar/WarTable.class'
-          jar tf build/libs/kingdomsatwar-0.5.0-alpha.jar | grep -q 'com/kingdomsatwar/WarMapScreen.class'
-          jar tf build/libs/kingdomsatwar-0.5.0-alpha.jar | grep -q 'com/kingdomsatwar/WarVisuals.class'
+          test -f build/libs/kingdomsatwar-0.6.0-alpha.jar
+          jar tf build/libs/kingdomsatwar-0.6.0-alpha.jar | grep -q 'META-INF/mods.toml'
+          jar tf build/libs/kingdomsatwar-0.6.0-alpha.jar | grep -q 'com/kingdomsatwar/WarTable.class'
+          jar tf build/libs/kingdomsatwar-0.6.0-alpha.jar | grep -q 'com/kingdomsatwar/WarMapScreen.class'
+          jar tf build/libs/kingdomsatwar-0.6.0-alpha.jar | grep -q 'com/kingdomsatwar/WarVisuals.class'
       - name: Headless Forge dedicated-server smoke test
         continue-on-error: true
         timeout-minutes: 5
@@ -96,7 +99,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: iron-forge-v0.5.0-server-smoke-log
+          name: iron-forge-v0.6.0-server-smoke-log
           path: |
             server-smoke.log
             run/logs/latest.log
@@ -104,6 +107,6 @@ jobs:
       - name: Upload mod for CurseForge profile
         uses: actions/upload-artifact@v4
         with:
-          name: iron-forge-v0.5.0-skirmish-and-regression
-          path: build/libs/kingdomsatwar-0.5.0-alpha.jar
+          name: iron-forge-v0.6.0-army-combat-logistics
+          path: build/libs/kingdomsatwar-0.6.0-alpha.jar
           if-no-files-found: error
