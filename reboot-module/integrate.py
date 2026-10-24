@@ -30,6 +30,11 @@ s=s.replace(old,new)
 if not n:
     # Alternative spacing or v0.6 formatting; abort loudly instead of silently duplicating economies.
     raise RuntimeError("Could not find old passive iron generation")
+# Reject obsolete menu-only mines so they cannot charge resources without production.
+old='if(c.industry!=0)return "This chunk already has an economic building.";'
+assert old in s
+s=s.replace(old,old+'\\n        if(type==2)return "Use a physical Mine Controller and underground timber supports for iron production.";')
+
 state.write_text(s)
 
 gradle=Path("build.gradle")
