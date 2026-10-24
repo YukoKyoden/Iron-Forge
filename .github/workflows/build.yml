@@ -28,6 +28,10 @@ jobs:
         run: xz -dc iron-forge-v030.patch.xz | patch --batch -p4
       - name: Repair command registration nesting
         run: sed -i '32s/$/)/;34s/$/)/;65s/);/));/' src/main/java/com/kingdomsatwar/WarCommands.java
+      - name: Fix War Table buttons and server responses
+        run: |
+          base64 -d iron-forge-map-button-fix.patch.xz.base64 | xz -dc | patch --batch -p1
+          sed -i "s/version = '0.3.0-alpha'/version = '0.3.1-alpha'/" build.gradle
       - name: Test kingdom and warfare strategy
         run: |
           mkdir -p build/simtest
@@ -37,13 +41,13 @@ jobs:
         run: gradle --no-daemon --stacktrace clean build
       - name: Validate mod jar
         run: |
-          test -f build/libs/kingdomsatwar-0.3.0-alpha.jar
-          jar tf build/libs/kingdomsatwar-0.3.0-alpha.jar | grep -q 'META-INF/mods.toml'
-          jar tf build/libs/kingdomsatwar-0.3.0-alpha.jar | grep -q 'com/kingdomsatwar/WarTable.class'
-          jar tf build/libs/kingdomsatwar-0.3.0-alpha.jar | grep -q 'com/kingdomsatwar/WarMapScreen.class'
+          test -f build/libs/kingdomsatwar-0.3.1-alpha.jar
+          jar tf build/libs/kingdomsatwar-0.3.1-alpha.jar | grep -q 'META-INF/mods.toml'
+          jar tf build/libs/kingdomsatwar-0.3.1-alpha.jar | grep -q 'com/kingdomsatwar/WarTable.class'
+          jar tf build/libs/kingdomsatwar-0.3.1-alpha.jar | grep -q 'com/kingdomsatwar/WarMapScreen.class'
       - name: Upload mod for CurseForge profile
         uses: actions/upload-artifact@v4
         with:
-          name: iron-forge-v0.3.0-forge-1.20.1
-          path: build/libs/kingdomsatwar-0.3.0-alpha.jar
+          name: iron-forge-v0.3.1-war-table-fix-forge-1.20.1
+          path: build/libs/kingdomsatwar-0.3.1-alpha.jar
           if-no-files-found: error
