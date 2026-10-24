@@ -21,7 +21,10 @@ jobs:
         with:
           gradle-version: '8.8'
       - name: Extract mod source
-        run: tar -xJf iron-forge-source.tar.xz
+        run: |
+          tar -xJf iron-forge-source.tar.xz
+          sed -i "s/version = '0.1.1-alpha'/version = '0.2.0-alpha'/" build.gradle
+          sed -i 's/version="0.1.1-alpha"/version="0.2.0-alpha"/' src/main/resources/META-INF/mods.toml
       - name: Test strategy simulation
         run: |
           mkdir -p build/simtest
@@ -31,12 +34,12 @@ jobs:
         run: gradle --no-daemon --stacktrace clean build
       - name: Validate mod JAR
         run: |
-          test -f build/libs/kingdomsatwar-0.1.1-alpha.jar
-          jar tf build/libs/kingdomsatwar-0.1.1-alpha.jar | grep -q META-INF/mods.toml
-          jar tf build/libs/kingdomsatwar-0.1.1-alpha.jar | grep -q com/kingdomsatwar/KingdomsAtWar.class
+          test -f build/libs/kingdomsatwar-0.2.0-alpha.jar
+          jar tf build/libs/kingdomsatwar-0.2.0-alpha.jar | grep -q META-INF/mods.toml
+          jar tf build/libs/kingdomsatwar-0.2.0-alpha.jar | grep -q com/kingdomsatwar/WarMapScreen.class
       - name: Upload drag-and-drop mod
         uses: actions/upload-artifact@v4
         with:
-          name: kingdoms-at-war-forge-1.20.1
-          path: build/libs/kingdomsatwar-0.1.1-alpha.jar
+          name: kingdoms-at-war-graphical-map-1.20.1
+          path: build/libs/kingdomsatwar-0.2.0-alpha.jar
           if-no-files-found: error
