@@ -1,4 +1,4 @@
-name: Build Kingdoms at War Forge Mod
+name: Build Iron Forge Mod
 on:
   push:
     branches: [main]
@@ -20,26 +20,26 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.8'
-      - name: Extract mod source
-        run: |
-          tar -xJf iron-forge-source.tar.xz
-          sed -i "s/version = '0.1.1-alpha'/version = '0.2.0-alpha'/" build.gradle
-          sed -i 's/version="0.1.1-alpha"/version="0.2.0-alpha"/' src/main/resources/META-INF/mods.toml
-      - name: Test strategy simulation
+      - name: Extract original project
+        run: tar -xJf iron-forge-source.tar.xz
+      - name: Apply Iron Forge 0.3 upgrade
+        run: xz -dc iron-forge-v030.patch.xz | patch --batch -p4
+      - name: Test kingdom and warfare strategy
         run: |
           mkdir -p build/simtest
           javac --release 17 -d build/simtest src/main/java/com/kingdomsatwar/WarState.java src/test/java/com/kingdomsatwar/WarStateTest.java
           java -cp build/simtest com.kingdomsatwar.WarStateTest
-      - name: Build Forge 1.20.1 mod
+      - name: Build Forge 1.20.1 jar
         run: gradle --no-daemon --stacktrace clean build
-      - name: Validate mod JAR
+      - name: Validate mod jar
         run: |
-          test -f build/libs/kingdomsatwar-0.2.0-alpha.jar
-          jar tf build/libs/kingdomsatwar-0.2.0-alpha.jar | grep -q META-INF/mods.toml
-          jar tf build/libs/kingdomsatwar-0.2.0-alpha.jar | grep -q com/kingdomsatwar/WarMapScreen.class
-      - name: Upload drag-and-drop mod
+          test -f build/libs/kingdomsatwar-0.3.0-alpha.jar
+          jar tf build/libs/kingdomsatwar-0.3.0-alpha.jar | grep -q 'META-INF/mods.toml'
+          jar tf build/libs/kingdomsatwar-0.3.0-alpha.jar | grep -q 'com/kingdomsatwar/WarTable.class'
+          jar tf build/libs/kingdomsatwar-0.3.0-alpha.jar | grep -q 'com/kingdomsatwar/WarMapScreen.class'
+      - name: Upload mod for CurseForge profile
         uses: actions/upload-artifact@v4
         with:
-          name: kingdoms-at-war-graphical-map-1.20.1
-          path: build/libs/kingdomsatwar-0.2.0-alpha.jar
+          name: iron-forge-v0.3.0-forge-1.20.1
+          path: build/libs/kingdomsatwar-0.3.0-alpha.jar
           if-no-files-found: error
