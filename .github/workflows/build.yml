@@ -32,7 +32,7 @@ jobs:
         run: |
           base64 -d iron-forge-map-button-fix.patch.xz.base64 | xz -dc | patch --batch -p1
           sed -i "s/version = '0.3.0-alpha'/version = '0.3.1-alpha'/" build.gradle
-      - name: Test kingdom and warfare strategy
+      - name: Apply Iron Forge 0.4 army warfare and diplomacy\n        run: base64 -d patches/v040.part1 | xz -dc | patch --batch -p1\n      - name: Test kingdom and warfare strategy
         run: |
           mkdir -p build/simtest
           javac --release 17 -d build/simtest src/main/java/com/kingdomsatwar/WarState.java src/test/java/com/kingdomsatwar/WarStateTest.java
@@ -41,13 +41,13 @@ jobs:
         run: gradle --no-daemon --stacktrace clean build
       - name: Validate mod jar
         run: |
-          test -f build/libs/kingdomsatwar-0.3.1-alpha.jar
-          jar tf build/libs/kingdomsatwar-0.3.1-alpha.jar | grep -q 'META-INF/mods.toml'
-          jar tf build/libs/kingdomsatwar-0.3.1-alpha.jar | grep -q 'com/kingdomsatwar/WarTable.class'
-          jar tf build/libs/kingdomsatwar-0.3.1-alpha.jar | grep -q 'com/kingdomsatwar/WarMapScreen.class'
+          test -f build/libs/kingdomsatwar-0.4.0-alpha.jar
+          jar tf build/libs/kingdomsatwar-0.4.0-alpha.jar | grep -q 'META-INF/mods.toml'
+          jar tf build/libs/kingdomsatwar-0.4.0-alpha.jar | grep -q 'com/kingdomsatwar/WarTable.class'
+          jar tf build/libs/kingdomsatwar-0.4.0-alpha.jar | grep -q 'com/kingdomsatwar/WarMapScreen.class'\n          jar tf build/libs/kingdomsatwar-0.4.0-alpha.jar | grep -q 'com/kingdomsatwar/WarVisuals.class'
       - name: Upload mod for CurseForge profile
         uses: actions/upload-artifact@v4
         with:
-          name: iron-forge-v0.3.1-war-table-fix-forge-1.20.1
-          path: build/libs/kingdomsatwar-0.3.1-alpha.jar
+          name: iron-forge-v0.4.0-army-warfare-forge-1.20.1
+          path: build/libs/kingdomsatwar-0.4.0-alpha.jar
           if-no-files-found: error
