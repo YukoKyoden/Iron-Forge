@@ -21,7 +21,9 @@ jobs:
         with:
           gradle-version: '8.8'
       - name: Extract mod source
-        run: tar -xJf iron-forge-source.tar.xz
+        run: |
+          test -f Iron-Forge-Source-Upload.zip || { echo 'Missing Iron-Forge-Source-Upload.zip in repository root'; exit 1; }
+          unzip -oq Iron-Forge-Source-Upload.zip
       - name: Test strategy simulation
         run: |
           mkdir -p build/simtest
