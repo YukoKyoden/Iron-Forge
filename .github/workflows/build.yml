@@ -33,7 +33,9 @@ jobs:
           base64 -d iron-forge-map-button-fix.patch.xz.base64 | xz -dc | patch --batch -p1
           sed -i "s/version = '0.3.0-alpha'/version = '0.3.1-alpha'/" build.gradle
       - name: Apply Iron Forge 0.4 army warfare and diplomacy
-        run: base64 -d patches/v040.part1 | xz -dc | patch --batch -p1
+        run: | 
+          sed -i "s/version = '0.3.1-alpha'/version = '0.3.0-alpha'/" build.gradle
+          base64 -d patches/v040.part1 | xz -dc | patch --batch -p1
       - name: Test kingdom and warfare strategy
         run: |
           mkdir -p build/simtest
