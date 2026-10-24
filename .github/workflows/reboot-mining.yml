@@ -1,4 +1,4 @@
-name: Build Iron Forge Reboot Geological Mines
+name: Build Iron Forge Reboot Physical Recruits
 on:
   push:
     branches: [reboot/kingdom-warfare-core]
@@ -80,17 +80,21 @@ jobs:
         run: gradle --no-daemon --stacktrace clean build
       - name: Validate mod jar
         run: |
-          test -f build/libs/kingdomsatwar-0.8.0-construction-alpha.jar
-          jar tf build/libs/kingdomsatwar-0.8.0-construction-alpha.jar | grep -q 'META-INF/mods.toml'
-          jar tf build/libs/kingdomsatwar-0.8.0-construction-alpha.jar | grep -q 'com/kingdomsatwar/WarTable.class'
-          jar tf build/libs/kingdomsatwar-0.8.0-construction-alpha.jar | grep -q 'com/kingdomsatwar/WarMapScreen.class'
-          jar tf build/libs/kingdomsatwar-0.8.0-construction-alpha.jar | grep -q 'com/kingdomsatwar/WarVisuals.class'
-          jar tf build/libs/kingdomsatwar-0.8.0-construction-alpha.jar | grep -q 'com/kingdomsatwar/MineEconomy.class'
-          jar tf build/libs/kingdomsatwar-0.8.0-construction-alpha.jar | grep -q 'com/kingdomsatwar/MineBlocks.class'
-          jar tf build/libs/kingdomsatwar-0.8.0-construction-alpha.jar | grep -q 'com/kingdomsatwar/MineRuntime.class'
-          jar tf build/libs/kingdomsatwar-0.8.0-construction-alpha.jar | grep -q 'com/kingdomsatwar/MineControllerBlock.class'
-          jar tf build/libs/kingdomsatwar-0.8.0-construction-alpha.jar | grep -q 'com/kingdomsatwar/MineControllerBlockEntity.class'
-          jar tf build/libs/kingdomsatwar-0.8.0-construction-alpha.jar | grep -q 'com/kingdomsatwar/MineBlueprint.class'
+          test -f build/libs/kingdomsatwar-0.9.0-recruits-alpha.jar
+          jar tf build/libs/kingdomsatwar-0.9.0-recruits-alpha.jar | grep -q 'META-INF/mods.toml'
+          jar tf build/libs/kingdomsatwar-0.9.0-recruits-alpha.jar | grep -q 'com/kingdomsatwar/WarTable.class'
+          jar tf build/libs/kingdomsatwar-0.9.0-recruits-alpha.jar | grep -q 'com/kingdomsatwar/WarMapScreen.class'
+          jar tf build/libs/kingdomsatwar-0.9.0-recruits-alpha.jar | grep -q 'com/kingdomsatwar/WarVisuals.class'
+          jar tf build/libs/kingdomsatwar-0.9.0-recruits-alpha.jar | grep -q 'com/kingdomsatwar/MineEconomy.class'
+          jar tf build/libs/kingdomsatwar-0.9.0-recruits-alpha.jar | grep -q 'com/kingdomsatwar/MineBlocks.class'
+          jar tf build/libs/kingdomsatwar-0.9.0-recruits-alpha.jar | grep -q 'com/kingdomsatwar/MineRuntime.class'
+          jar tf build/libs/kingdomsatwar-0.9.0-recruits-alpha.jar | grep -q 'com/kingdomsatwar/MineControllerBlock.class'
+          jar tf build/libs/kingdomsatwar-0.9.0-recruits-alpha.jar | grep -q 'com/kingdomsatwar/MineControllerBlockEntity.class'
+          jar tf build/libs/kingdomsatwar-0.9.0-recruits-alpha.jar | grep -q 'com/kingdomsatwar/MineBlueprint.class'
+          jar tf build/libs/kingdomsatwar-0.9.0-recruits-alpha.jar | grep -q 'com/kingdomsatwar/IronRecruit.class'
+          jar tf build/libs/kingdomsatwar-0.9.0-recruits-alpha.jar | grep -q 'com/kingdomsatwar/IronRecruitRegistry.class'
+          jar tf build/libs/kingdomsatwar-0.9.0-recruits-alpha.jar | grep -q 'com/kingdomsatwar/IronRecruitRuntime.class'
+          jar tf build/libs/kingdomsatwar-0.9.0-recruits-alpha.jar | grep -q 'com/kingdomsatwar/IronRecruitClient.class'
       - name: Verify mining registry wiring
         run: |
           python3 - <<'PY'
@@ -122,6 +126,25 @@ jobs:
           print('PASS: mining has no manual chunk-claim prerequisite')
           print('PASS: mine blocks and items share WarTable registry without early block lookup')
           PY
+      - name: Check villager recruitment server wiring
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('src/main/java/com/kingdomsatwar')
+          entry=(src/'KingdomsAtWar.java').read_text()
+          mob=(src/'IronRecruit.java').read_text()
+          register=(src/'IronRecruitRegistry.java').read_text()
+          runtime=(src/'IronRecruitRuntime.java').read_text()
+          client=(src/'IronRecruitClient.java').read_text()
+          assert 'IronRecruitRegistry.init' in entry
+          assert 'IronRecruitRuntime.instance()' in entry
+          assert 'EntityAttributeCreationEvent' in register
+          assert 'registerEntityRenderer' in client and 'Dist.CLIENT' in client
+          assert 'setPersistenceRequired()' in mob and 'IronForgeKingdom' in mob
+          assert 'MeleeAttackGoal' in mob and 'SoldierMoveGoal' in mob
+          assert 'HIRE_COST=16' in runtime and 'villager.discard()' in runtime
+          print('PASS: server-side hiring, saved identity, real AI and sided renderer are wired')
+          PY
       - name: Headless Minecraft client registry smoke
         timeout-minutes: 4
         run: |
@@ -145,7 +168,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: iron-forge-v0.8.0-client-smoke-log
+          name: iron-forge-v0.9.0-client-smoke-log
           path: client-smoke.log
           if-no-files-found: ignore
       - name: Headless Forge dedicated-server smoke test
@@ -181,6 +204,6 @@ jobs:
       - name: Upload mod for CurseForge profile
         uses: actions/upload-artifact@v4
         with:
-          name: iron-forge-reboot-construction-mine-0.8.0
-          path: build/libs/kingdomsatwar-0.8.0-construction-alpha.jar
+          name: iron-forge-reboot-v0.9.0-physical-recruits
+          path: build/libs/kingdomsatwar-0.9.0-recruits-alpha.jar
           if-no-files-found: error
