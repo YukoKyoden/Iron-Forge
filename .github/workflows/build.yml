@@ -40,23 +40,67 @@ jobs:
         run: base64 -d patches/v041.b64 | xz -dc | patch --batch -p1
       - name: Add training cleanup command and GUI control
         run: base64 -d patches/v042.b64 | xz -dc | patch --batch -p1
+      - name: Apply v0.4.3 command and training fixes
+        run: python3 ci/apply_v043.py
+      - name: Install gameplay regression suite
+        run: cp ci/WarRegressionTest.java src/test/java/com/kingdomsatwar/WarRegressionTest.java
+      - name: Verify command permissions and registration
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          cmd=Path('src/main/java/com/kingdomsatwar/WarCommands.java').read_text()
+          net=Path('src/main/java/com/kingdomsatwar/WarMapNetwork.java').read_text()
+          assert 'literal("skirmish").executes' in cmd
+          assert 'literal("endtest").executes' in cmd
+          assert 'literal("skirmish").requires' not in cmd
+          assert 'Training requires Creative mode or operator permission.' in cmd
+          assert 'player.isCreative()' in net
+          print('PASS: both test commands visible; practice is permission-checked at execution time.')
+          PY
       - name: Test kingdom and warfare strategy
         run: |
           mkdir -p build/simtest
-          javac --release 17 -d build/simtest src/main/java/com/kingdomsatwar/WarState.java src/test/java/com/kingdomsatwar/WarStateTest.java
+          javac --release 17 -d build/simtest src/main/java/com/kingdomsatwar/WarState.java src/test/java/com/kingdomsatwar/WarStateTest.java src/test/java/com/kingdomsatwar/WarRegressionTest.java
           java -cp build/simtest com.kingdomsatwar.WarStateTest
+          java -cp build/simtest com.kingdomsatwar.WarRegressionTest
       - name: Build Forge 1.20.1 jar
         run: gradle --no-daemon --stacktrace clean build
       - name: Validate mod jar
         run: |
-          test -f build/libs/kingdomsatwar-0.4.2-alpha.jar
-          jar tf build/libs/kingdomsatwar-0.4.2-alpha.jar | grep -q 'META-INF/mods.toml'
-          jar tf build/libs/kingdomsatwar-0.4.2-alpha.jar | grep -q 'com/kingdomsatwar/WarTable.class'
-          jar tf build/libs/kingdomsatwar-0.4.2-alpha.jar | grep -q 'com/kingdomsatwar/WarMapScreen.class'
-          jar tf build/libs/kingdomsatwar-0.4.2-alpha.jar | grep -q 'com/kingdomsatwar/WarVisuals.class'
+          test -f build/libs/kingdomsatwar-0.4.3-alpha.jar
+          jar tf build/libs/kingdomsatwar-0.4.3-alpha.jar | grep -q 'META-INF/mods.toml'
+          jar tf build/libs/kingdomsatwar-0.4.3-alpha.jar | grep -q 'com/kingdomsatwar/WarTable.class'
+          jar tf build/libs/kingdomsatwar-0.4.3-alpha.jar | grep -q 'com/kingdomsatwar/WarMapScreen.class'
+          jar tf build/libs/kingdomsatwar-0.4.3-alpha.jar | grep -q 'com/kingdomsatwar/WarVisuals.class'
+      - name: Headless Forge dedicated-server smoke test
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          mkdir -p run
+          echo 'eula=true' > run/eula.txt
+          set +e
+          timeout --signal=INT --kill-after=10s 170s gradle --no-daemon runServer > server-smoke.log 2>&1
+          result=$?
+          set -e
+          if grep -Eq 'Done \(.*\)! For help|Done \(.*\)!|Done .* For help' server-smoke.log run/logs/latest.log 2>/dev/null; then
+            echo 'PASS: dedicated server reached ready state'
+          else
+            echo 'SERVER SMOKE NOT VERIFIED; see server-smoke.log'
+            tail -n 100 server-smoke.log
+            exit 1
+          fi
+      - name: Upload server startup log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iron-forge-v0.4.3-server-smoke-log
+          path: |
+            server-smoke.log
+            run/logs/latest.log
+          if-no-files-found: ignore
       - name: Upload mod for CurseForge profile
         uses: actions/upload-artifact@v4
         with:
-          name: iron-forge-v0.4.2-army-warfare-forge-1.20.1
-          path: build/libs/kingdomsatwar-0.4.2-alpha.jar
+          name: iron-forge-v0.4.3-skirmish-and-regression
+          path: build/libs/kingdomsatwar-0.4.3-alpha.jar
           if-no-files-found: error
