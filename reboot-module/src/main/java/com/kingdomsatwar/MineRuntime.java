@@ -1,11 +1,13 @@
 package com.kingdomsatwar;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraftforge.event.TickEvent;
@@ -13,112 +15,104 @@ import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.server.ServerLifecycleHooks;
-import java.io.IOException;
-import java.nio.file.Path;
 
-/** Forge integration: checks blocks only at placement/removal; economy once per minute. */
+/** Physical construction chest, then lightweight production with saved geological reserves. */
 public final class MineRuntime {
     private static final MineRuntime INSTANCE=new MineRuntime();
     public static MineRuntime instance(){return INSTANCE;}
-    private MinecraftServer server; private MineEconomy mines; private long ticks;
+    private MinecraftServer server;private MineEconomy mines;private long ticks;
     private MineRuntime(){}
     private Path file(MinecraftServer s){return s.getWorldPath(LevelResource.ROOT).resolve("data/ironforge_mines.properties");}
     private MineEconomy get(MinecraftServer s){
         if(mines==null||server!=s){
-            server=s;
-            try{mines=MineEconomy.load(file(s));}
+            server=s;try{mines=MineEconomy.load(file(s));}
             catch(IOException e){System.err.println("[IronForge] Mine load failed: "+e);mines=new MineEconomy();}
             ticks=0;
-        }
-        return mines;
+        }return mines;
     }
-    private static String dim(Level lvl){return lvl.dimension().location().toString();}
+    private static String dim(Level level){return level.dimension().location().toString();}
     private static void tell(ServerPlayer p,String message){p.sendSystemMessage(Component.literal("[Mine] "+message));}
     @SubscribeEvent public void placed(BlockEvent.EntityPlaceEvent event){
         if(!(event.getEntity() instanceof ServerPlayer player))return;
         if(!(event.getLevel() instanceof Level level)||level.isClientSide)return;
-        BlockState state=event.getPlacedBlock();
-        boolean controller=state.is(MineBlocks.CONTROLLER.get()),support=state.is(MineBlocks.SUPPORT.get());
-        if(!controller&&!support)return;
+        if(!event.getPlacedBlock().is(MineBlocks.CONTROLLER.get()))return;
         BlockPos p=event.getPos();
         WarState game=KingdomsAtWar.instance().get(player.server);
-        WarState.Kingdom k=game.kingdom(player.getUUID());
-        if(k==null){tell(player,"Create a kingdom before registering mines.");return;}
-        String dimension=dim(level);
-        MineEconomy model=get(player.server);
-        if(controller){
-            // No manual chunk claims required: kingdom membership identifies ownership.
-            // Town Hall territories will replace the prototype's chunk-clicking system.
-            MineEconomy.Result r=model.register(k.id,dimension,player.serverLevel().getSeed(),p.getX(),p.getY(),p.getZ());
-            tell(player,r.message());
-            if(r.ok())save();
-        }else{
-            MineEconomy.Mine m=model.nearest(k.id,dimension,p.getX(),p.getY(),p.getZ());
-            if(m==null){tell(player,"No registered mine within 48 blocks.");return;}
-            int faces=rockFaces(level,p);
-            boolean open=(level.isEmptyBlock(p.north())&&level.isEmptyBlock(p.south()))
-                      ||(level.isEmptyBlock(p.east())&&level.isEmptyBlock(p.west()));
-            open=open && level.isEmptyBlock(p.above());
-            MineEconomy.Result r=model.addSupport(m.id,p.getX(),p.getY(),p.getZ(),faces,open);
-            tell(player,r.message());
-            if(r.ok())save();
-        }
-    }
-    /** Eight nearby samples on the two rings, only on support placement. */
-    private static int rockFaces(Level level,BlockPos p){
-        int count=0;
-        for(int dist:new int[]{2,3})for(int[] d:new int[][]{{1,0},{-1,0},{0,1},{0,-1}}){
-            BlockState s=level.getBlockState(p.offset(d[0]*dist,0,d[1]*dist));
-            if(s.is(Blocks.STONE)||s.is(Blocks.DEEPSLATE)||s.is(Blocks.TUFF)
-                ||s.is(Blocks.ANDESITE)||s.is(Blocks.DIORITE)||s.is(Blocks.GRANITE)
-                ||s.is(Blocks.COBBLED_DEEPSLATE))count++;
-        }
-        return count;
+        WarState.Kingdom kingdom=game.kingdom(player.getUUID());
+        if(kingdom==null){tell(player,"Create a kingdom at the War Table before placing a Mine Controller.");return;}
+        MineEconomy.Result r=get(player.server).register(kingdom.id,dim(level),
+            player.serverLevel().getSeed(),p.getX(),p.getY(),p.getZ());
+        tell(player,r.message());
+        if(r.ok())save();
     }
     @SubscribeEvent public void broken(BlockEvent.BreakEvent event){
         if(!(event.getLevel() instanceof Level level)||level.isClientSide)return;
-        BlockState state=event.getState();
-        boolean controller=state.is(MineBlocks.CONTROLLER.get()),support=state.is(MineBlocks.SUPPORT.get());
-        if(!controller&&!support)return;
-        if(server==null)return;
-        BlockPos p=event.getPos();MineEconomy model=get(server);
-        boolean changed=controller?model.removeMine(dim(level),p.getX(),p.getY(),p.getZ()):
-           model.removeSupport(dim(level),p.getX(),p.getY(),p.getZ());
-        if(changed)save();
+        if(event.getState().is(MineBlocks.CONTROLLER.get()))controllerRemoved(level,event.getPos());
+    }
+    /** Also handles explosions/creative replacement; safe if break event fired earlier. */
+    public void controllerRemoved(Level level,BlockPos pos){
+        if(server==null||level.isClientSide)return;
+        if(get(server).removeMine(dim(level),pos.getX(),pos.getY(),pos.getZ()))save();
     }
     public void interact(ServerPlayer player,BlockPos pos){
         MineEconomy model=get(player.server);
         MineEconomy.Mine mine=model.get(MineEconomy.key(dim(player.level()),pos.getX(),pos.getY(),pos.getZ()));
-        if(mine==null){tell(player,"Inactive controller. Place underground and register while part of a kingdom.");return;}
+        if(mine==null){tell(player,"Inactive controller. Place it at Y -55 to 55 while belonging to a kingdom.");return;}
         WarState.Kingdom k=KingdomsAtWar.instance().get(player.server).kingdom(player.getUUID());
-        if(k==null||!k.id.equals(mine.owner)){tell(player,"This mine belongs to another kingdom.");return;}
+        if(k==null||!k.id.equals(mine.owner)){tell(player,"You do not own this mine.");return;}
+        if(!(player.serverLevel().getBlockEntity(pos) instanceof MineControllerBlockEntity be)){
+            tell(player,"Mine construction chest is missing.");return;
+        }
         if(player.isShiftKeyDown()){
-            MineEconomy.Result r=model.addWorker(mine.id);tell(player,r.message());if(r.ok())save();
-        } else tell(player,"Iron deposit "+mine.quality+"/5 | reserve "+mine.reserve+" | supports "+mine.supports.size()+
-             " | workers "+mine.workers+"/"+mine.maxWorkers()+" | +"+
-             Math.min(40,Math.min(mine.workers,mine.maxWorkers())*(mine.quality+1))+" iron/min. Sneak-right-click to hire a worker.");
+            if(!mine.built){
+                tell(player,be.beginBuild(player.serverLevel()));
+            }else{
+                MineEconomy.Result r=model.addWorker(mine.id);
+                tell(player,r.message());if(r.ok())save();
+            }
+        }else{
+            tell(player,"Deposit 64 Oak Logs, 128 Cobblestone, 16 Iron Ingots. "+be.needs()+
+                ". Sneak-right-click to construct when ready.");
+            if(mine.built)tell(player,"Deposit "+mine.quality+"/5 | reserve "+mine.reserve+
+                " | workers "+mine.workers+"/"+mine.maxWorkers()+
+                " | estimated "+Math.min(40,mine.workers*(mine.quality+1))+" iron/min.");
+            player.openMenu(be);
+        }
+    }
+    public void constructionComplete(ServerLevel level,BlockPos p){
+        MineEconomy model=get(level.getServer());
+        MineEconomy.Result r=model.completeBuild(MineEconomy.key(dim(level),p.getX(),p.getY(),p.getZ()));
+        save();
+        for(ServerPlayer player:level.players())if(player.blockPosition().distSqr(p)<64*64)
+            tell(player,r.message());
+    }
+    public void constructionInterrupted(ServerLevel level,BlockPos p,String why){
+        for(ServerPlayer player:level.players())if(player.blockPosition().distSqr(p)<64*64)
+            tell(player,"Construction paused: "+why+". Materials already committed; preserve this controller.");
     }
     @SubscribeEvent public void tick(TickEvent.ServerTickEvent event){
         if(event.phase!=TickEvent.Phase.END)return;
         MinecraftServer current=ServerLifecycleHooks.getCurrentServer();
-        if(current==null)return;MineEconomy model=get(current);
+        if(current==null)return;
+        MineEconomy model=get(current);
         if(++ticks%1200!=0)return;
         WarState game=KingdomsAtWar.instance().get(current);
-        int produced=0;
-        for(MineEconomy.Mine m:model.all()){
-            WarState.Kingdom owner=game.kingdoms.get(m.owner);
+        boolean produced=false;
+        for(MineEconomy.Mine mine:model.all()){
+            WarState.Kingdom owner=game.kingdoms.get(mine.owner);
             if(owner==null)continue;
-            int amount=model.payout(m,Math.max(0,MineEconomy.WAREHOUSE_IRON_CAP-owner.iron));
-            if(amount>0){owner.iron+=amount;game.markDirty();produced+=amount;}
+            int amount=model.payout(mine,Math.max(0,MineEconomy.WAREHOUSE_IRON_CAP-owner.iron));
+            if(amount>0){owner.iron+=amount;game.markDirty();produced=true;}
         }
-        if(produced>0)KingdomsAtWar.instance().save(current);
+        if(produced)KingdomsAtWar.instance().save(current);
         save();
     }
     @SubscribeEvent public void stopping(ServerStoppingEvent event){
-        if(server==event.getServer()) {save();server=null;mines=null;}
+        if(server==event.getServer()){save();server=null;mines=null;}
     }
     private void save(){
         if(server==null||mines==null)return;
-        try{mines.save(file(server));}catch(IOException e){System.err.println("[IronForge] Mine save failed: "+e);}
+        try{mines.save(file(server));}
+        catch(IOException e){System.err.println("[IronForge] Mine save failed: "+e);}
     }
 }
