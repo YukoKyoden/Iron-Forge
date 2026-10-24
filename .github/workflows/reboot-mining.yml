@@ -80,14 +80,17 @@ jobs:
         run: gradle --no-daemon --stacktrace clean build
       - name: Validate mod jar
         run: |
-          test -f build/libs/kingdomsatwar-0.7.4-no-claims.jar
-          jar tf build/libs/kingdomsatwar-0.7.4-no-claims.jar | grep -q 'META-INF/mods.toml'
-          jar tf build/libs/kingdomsatwar-0.7.4-no-claims.jar | grep -q 'com/kingdomsatwar/WarTable.class'
-          jar tf build/libs/kingdomsatwar-0.7.4-no-claims.jar | grep -q 'com/kingdomsatwar/WarMapScreen.class'
-          jar tf build/libs/kingdomsatwar-0.7.4-no-claims.jar | grep -q 'com/kingdomsatwar/WarVisuals.class'
-          jar tf build/libs/kingdomsatwar-0.7.4-no-claims.jar | grep -q 'com/kingdomsatwar/MineEconomy.class'
-          jar tf build/libs/kingdomsatwar-0.7.4-no-claims.jar | grep -q 'com/kingdomsatwar/MineBlocks.class'
-          jar tf build/libs/kingdomsatwar-0.7.4-no-claims.jar | grep -q 'com/kingdomsatwar/MineRuntime.class'
+          test -f build/libs/kingdomsatwar-0.8.0-construction-alpha.jar
+          jar tf build/libs/kingdomsatwar-0.8.0-construction-alpha.jar | grep -q 'META-INF/mods.toml'
+          jar tf build/libs/kingdomsatwar-0.8.0-construction-alpha.jar | grep -q 'com/kingdomsatwar/WarTable.class'
+          jar tf build/libs/kingdomsatwar-0.8.0-construction-alpha.jar | grep -q 'com/kingdomsatwar/WarMapScreen.class'
+          jar tf build/libs/kingdomsatwar-0.8.0-construction-alpha.jar | grep -q 'com/kingdomsatwar/WarVisuals.class'
+          jar tf build/libs/kingdomsatwar-0.8.0-construction-alpha.jar | grep -q 'com/kingdomsatwar/MineEconomy.class'
+          jar tf build/libs/kingdomsatwar-0.8.0-construction-alpha.jar | grep -q 'com/kingdomsatwar/MineBlocks.class'
+          jar tf build/libs/kingdomsatwar-0.8.0-construction-alpha.jar | grep -q 'com/kingdomsatwar/MineRuntime.class'
+          jar tf build/libs/kingdomsatwar-0.8.0-construction-alpha.jar | grep -q 'com/kingdomsatwar/MineControllerBlock.class'
+          jar tf build/libs/kingdomsatwar-0.8.0-construction-alpha.jar | grep -q 'com/kingdomsatwar/MineControllerBlockEntity.class'
+          jar tf build/libs/kingdomsatwar-0.8.0-construction-alpha.jar | grep -q 'com/kingdomsatwar/MineBlueprint.class'
       - name: Verify mining registry wiring
         run: |
           python3 - <<'PY'
@@ -106,6 +109,16 @@ jobs:
           runtime=Path('src/main/java/com/kingdomsatwar/MineRuntime.java').read_text()
           assert 'game.claimAt(' not in runtime
           assert 'A mine controller must be on your kingdom' not in runtime
+          controller=Path('src/main/java/com/kingdomsatwar/MineControllerBlock.java').read_text()
+          entity=Path('src/main/java/com/kingdomsatwar/MineControllerBlockEntity.java').read_text()
+          economy=Path('src/main/java/com/kingdomsatwar/MineEconomy.java').read_text()
+          assert 'MineControllerBlock::new' in table
+          assert 'new BlockItem(MINE_CONTROLLER.get()' in table
+          assert 'MineControllerBlockEntity.init' in Path('src/main/java/com/kingdomsatwar/KingdomsAtWar.java').read_text()
+          assert 'ChestMenu.threeRows' in entity
+          assert 'MineBlueprint.check' in entity
+          assert 'if(!m.built)' in economy or '!m.built' in economy
+          print('PASS: chest blueprint, construction gating and tile registration wired')
           print('PASS: mining has no manual chunk-claim prerequisite')
           print('PASS: mine blocks and items share WarTable registry without early block lookup')
           PY
@@ -132,7 +145,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: iron-forge-v0.7.4-client-smoke-log
+          name: iron-forge-v0.8.0-client-smoke-log
           path: client-smoke.log
           if-no-files-found: ignore
       - name: Headless Forge dedicated-server smoke test
@@ -168,6 +181,6 @@ jobs:
       - name: Upload mod for CurseForge profile
         uses: actions/upload-artifact@v4
         with:
-          name: iron-forge-reboot-geological-mines-0.7.4
-          path: build/libs/kingdomsatwar-0.7.4-no-claims.jar
+          name: iron-forge-reboot-construction-mine-0.8.0
+          path: build/libs/kingdomsatwar-0.8.0-construction-alpha.jar
           if-no-files-found: error
