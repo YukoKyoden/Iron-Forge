@@ -23,8 +23,10 @@ assert needle in s
 s=s.replace(needle,needle+" public void markDirty(){ dirty=true; }",1)
 # Iron from a mine must come from supported, finite physical mines, not passive old chunk bonuses.
 import re
-s,n=re.subn(r'k\\.iron=Math\\.min\\(10000,k\\.iron\\+\\(int\\)\\(Math\\.max\\(1,owned\\)\\*6\\)\\+mines\\*24\\);',
-            'k.iron=Math.min(10000,k.iron); // geological mine controllers create iron',s)
+old='k.iron=Math.min(10000,k.iron+(int)(Math.max(1,owned)*6)+mines*24);'
+new='k.iron=Math.min(10000,k.iron); // mined iron comes only from registered tunnel mines'
+n=s.count(old)
+s=s.replace(old,new)
 if not n:
     # Alternative spacing or v0.6 formatting; abort loudly instead of silently duplicating economies.
     raise RuntimeError("Could not find old passive iron generation")
