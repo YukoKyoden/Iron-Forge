@@ -110,11 +110,39 @@ All units have owner kingdom, group ID, home/rally position, morale/health, gear
 - Require soak tests for 2+ simultaneous battles, cross-dimension armies, player joins/logouts, chunk loading/unloading, concurrent reward claims, repeated map openings, and world restarts.
 - Never label a build "lag-free" without in-game performance evidence.
 
+## Capturable towns, control points and territory conquest
+**Player fantasy:** Medieval capture-the-flag warfare with actual Minecraft settlements. Towns are defended, raided, captured, and counterattacked; the War Table shows progress, and physical fighters contest a town-square banner nearby. The capture point is a `Town Banner` block/control volume, **not an item that must be carried**.
+
+### Settlement and ownership model
+- Placeable `Town Hall` / `Town Banner` designates the center of a town and its bounded territory. Register a player-built settlement. Later support opt-in, claimable **vanilla villages** and authored neutral towns rather than automatically taking over all villagers/builds.
+- Town data contains persistent ID, controlling kingdom, original founder, chunk set, central banner position, eligible buildings (barracks/warehouse access/tower), garrison army reference, defense tier, control status and loyalty/occupation state.
+- Starting version: **one capture zone per town** (radius about 8–12 blocks); a larger fortified city can later require 2–3 sequential points (outer gate, market, town hall). Avoid per-block ownership calculations.
+- Towns provide strategic advantages: a periodic capped supply output/trade access, a rally location, defensible location and watchtower network. Do not invent rewards unrelated to actual town production or supplies. Personal chests and builds do not become automatically lootable merely because territory changes hands; use explicit resource-ledger governance and configurable grief-protection rules.
+
+### Capture-the-flag combat rules
+1. Captures only start during a declared war (or on deliberately neutral, claimable settlements); require attacker-owned participating troop roster or an authorized kingdom player in capture radius.
+2. A town's defending garrison, watchmen, and fortification strength contribute to defense. Towers can detect the attack and issue kingdom alerts + redstone pulses, letting defenders call reinforcements via `R` HUD.
+3. Defenders physically present in capture zone **contest/pause progress**; when attackers control the zone, a visible progress bar rises (initial balancing target 90 seconds of uncontested control), with values configurable after playtests.
+4. Capture progress persists across player movement and chunk unload. When no player is nearby, a **strategic army objective simulation** advances/pushes back the same control state based on supplies, garrison, morale, and casualties; no extra entities/chunk force-loading.
+5. When 100% complete, flip the town once through an atomic server transaction; surviving garrison retreats or remains as defeated units according to war outcome, fortification state updates, and the new controller gets the designated town benefits.
+6. A short **occupation/stabilization period** delays full income and resists instant back-and-forth recapture. A town can be liberated in a later war or counterattack; no instant repeated flip exploits.
+7. The War Table shows owner color, contested icon, capture percentage, available defenders, known enemy forces and supply routes. Authorized kingdoms may send squads to the point using map clicks; the on-foot player sees capture feedback and reinforcement arrivals.
+
+### Low-lag capture implementation
+- One server-side territory objective record per town. Scan a bounded AABB around the banner at a configurable interval (e.g. 20 ticks), not every tick and never the whole world. Group soldiers by authoritative squad roster instead of counting visual proxies.
+- Enforce the shared active troop cap and squad AI budgets. A 250-man simulated army may attack a town defended by 100 strategically, while only 12–24 real NPCs are displayed at the immediate front when players are nearby.
+- Avoid spawning fresh physical soldiers for each progress update. No duplicated capture progress across players, worlds or simulation modes. Save the objective state and reconcile after restarts.
+- Security: server validates kingdom, declared war, troop ownership, world/dimension, proximity, and capture conditions. Client progress bar is presentation only.
+- Test cases: contested banner, reinforced defense, watchtower alarm pulse, offline/online transition, player disconnect, two attackers racing to capture, save/load at 99%, recapture cooldown, protection of personal storage, and two simultaneous town sieges.
+
+### Town conquest release gate
+A **real client playtest** must demonstrate: build a town → defend with watchmen → trigger an invasion alert → use a reinforcement order → fight near the banner → see capture progress and War Table status → capture and receive legitimate town production → save/reload ownership. Add both one-player AI and two-kingdom multiplayer integration tests before release.
+
 ## Implementation milestones and acceptance gates
 **M1: Playable defense vertical slice.** Banner + warehouse + barracks + three unit types + basic combat + watchtower + alert/redstone + HUD rally + save persistence. Must compile, boot server, pass unit tests, work in one real client world. No claim of full game before this.
-**M2: Tactical war loop.** Squad formations, patrol/hold/retreat, ranged attacks, cavalry mounts, enemy squads, battle objectives, casualty roster persistence, War Table battlefield reports and non-duplicating battle-spoils claims.
+**M2: Tactical war loop.** Squad formations, patrol/hold/retreat, ranged attacks, cavalry mounts, enemy squads, battle objectives, casualty roster persistence, War Table battlefield reports, non-duplicating battle-spoils claims, and a physically contested Town Banner capture objective.
 **M3: Kingdom logistics + AI enemy.** Supply/upkeep, troop recruitment limits, kingdom roles, automatic raid AI, defensible settlements.
-**M4: Siege + multiplayer.** Castle breach/capture mechanics, arrows/gates/objectives, permissions, multiple players ordering squads, hostile intelligence/whitelists.
+**M4: Siege + multiplayer.** Castle breach/capture mechanics, arrows/gates/objectives, capturable player-built and opt-in vanilla towns, occupation/conquest rules, permissions, multiple players ordering squads, hostile intelligence/whitelists.
 **M5: Performance, polish and release.** Profiling with Spark, sync budgets, chunk/unload tests, save migration strategy, balanced economics, usable textures/audio, client/server soak tests, public gameplay checklist.
 
 Each release requires compilation, automated simulation and protocol tests, Forge dedicated-server smoke test, manual one-player and two-player tests. Benchmark target: 20 TPS on a stated reference server with a representative encounter, not a universal guarantee.
