@@ -80,14 +80,14 @@ jobs:
         run: gradle --no-daemon --stacktrace clean build
       - name: Validate mod jar
         run: |
-          test -f build/libs/kingdomsatwar-0.7.3-geology-hotfix.jar
-          jar tf build/libs/kingdomsatwar-0.7.3-geology-hotfix.jar | grep -q 'META-INF/mods.toml'
-          jar tf build/libs/kingdomsatwar-0.7.3-geology-hotfix.jar | grep -q 'com/kingdomsatwar/WarTable.class'
-          jar tf build/libs/kingdomsatwar-0.7.3-geology-hotfix.jar | grep -q 'com/kingdomsatwar/WarMapScreen.class'
-          jar tf build/libs/kingdomsatwar-0.7.3-geology-hotfix.jar | grep -q 'com/kingdomsatwar/WarVisuals.class'
-          jar tf build/libs/kingdomsatwar-0.7.3-geology-hotfix.jar | grep -q 'com/kingdomsatwar/MineEconomy.class'
-          jar tf build/libs/kingdomsatwar-0.7.3-geology-hotfix.jar | grep -q 'com/kingdomsatwar/MineBlocks.class'
-          jar tf build/libs/kingdomsatwar-0.7.3-geology-hotfix.jar | grep -q 'com/kingdomsatwar/MineRuntime.class'
+          test -f build/libs/kingdomsatwar-0.7.4-no-claims.jar
+          jar tf build/libs/kingdomsatwar-0.7.4-no-claims.jar | grep -q 'META-INF/mods.toml'
+          jar tf build/libs/kingdomsatwar-0.7.4-no-claims.jar | grep -q 'com/kingdomsatwar/WarTable.class'
+          jar tf build/libs/kingdomsatwar-0.7.4-no-claims.jar | grep -q 'com/kingdomsatwar/WarMapScreen.class'
+          jar tf build/libs/kingdomsatwar-0.7.4-no-claims.jar | grep -q 'com/kingdomsatwar/WarVisuals.class'
+          jar tf build/libs/kingdomsatwar-0.7.4-no-claims.jar | grep -q 'com/kingdomsatwar/MineEconomy.class'
+          jar tf build/libs/kingdomsatwar-0.7.4-no-claims.jar | grep -q 'com/kingdomsatwar/MineBlocks.class'
+          jar tf build/libs/kingdomsatwar-0.7.4-no-claims.jar | grep -q 'com/kingdomsatwar/MineRuntime.class'
       - name: Verify mining registry wiring
         run: |
           python3 - <<'PY'
@@ -102,7 +102,7 @@ jobs:
           assert 'Properties.copy(Blocks.OAK_PLANKS)' in table
           assert 'Properties.copy(Blocks.OAK_LOG)' not in table
           assert 'private static final Block MINE_CONTROLLER_BLOCK' not in table
-          assert 'MineBlocks.init' not in mines
+          assert 'MineBlocks.init' not in mines\n          runtime=Path('src/main/java/com/kingdomsatwar/MineRuntime.java').read_text()\n          assert 'game.claimAt(' not in runtime\n          assert 'A mine controller must be on your kingdom' not in runtime\n          print('PASS: mining has no manual chunk-claim prerequisite')
           print('PASS: mine blocks and items share WarTable registry without early block lookup')
           PY
       - name: Headless Minecraft client registry smoke
@@ -128,7 +128,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: iron-forge-v0.7.3-client-smoke-log
+          name: iron-forge-v0.7.4-client-smoke-log
           path: client-smoke.log
           if-no-files-found: ignore
       - name: Headless Forge dedicated-server smoke test
@@ -164,6 +164,6 @@ jobs:
       - name: Upload mod for CurseForge profile
         uses: actions/upload-artifact@v4
         with:
-          name: iron-forge-reboot-geological-mines-0.7.3
-          path: build/libs/kingdomsatwar-0.7.3-geology-hotfix.jar
+          name: iron-forge-reboot-geological-mines-0.7.4
+          path: build/libs/kingdomsatwar-0.7.4-no-claims.jar
           if-no-files-found: error
