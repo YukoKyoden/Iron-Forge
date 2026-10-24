@@ -78,9 +78,41 @@ All units have owner kingdom, group ID, home/rally position, morale/health, gear
 - HUD: wave reinforcements, alert indicators, tactical placement.
 - Admin commands ONLY for diagnostics; not required for ordinary gameplay.
 
+## Hybrid War Table, battlefield rewards and strict performance rules
+**User experience:** Keep the existing idea of armies represented by troop counts and icons on a War Table. Orders are tactical/strategic on the map, while a nearby player can see a much smaller, real in-world battle.
+
+### One army, two representations
+- Each squad/army has exactly one server-authoritative record: ownership, units by type, real surviving troop roster/count, morale, supplies, current orders, position, and battle ID.
+- **No nearby player / unloaded chunks:** update strategic position and combat at a low configurable cadence (starting target 1 calculation/sec for active battles, even slower when idle). Do NOT force-load chunks or spawn NPCs just to keep a war progressing.
+- **Player enters a live conflict:** select a bounded subset of the soldiers to spawn as live physical fighters. Additional troops stay as simulated reserves, can appear as reinforcements, and are reflected in the War Table counts.
+- **Player leaves:** persist health, deaths, supplies, active orders and location before despawning representations. No reset of casualties, free army reappearance, multiple active versions of the same unit, or mixing simulated and physical damage for the same soldier.
+- Never promise a physical thousand-NPC battle. Use formations, actual objectives, coordinated attacks, audio/particles, and finite reinforcement waves to make 12–24 nearby recruits feel substantial.
+
+### War Table battle display
+- Show owner/attacker, army composition, strengths, morale, supplies, approximate map position, fort/tower warning markers, reinforcement routes and battle status.
+- Include **Battle Report** after resolution: victor, casualties by troop class, retreats, destroyed equipment, and recovered spoils (food, iron, arrows, wood, stone, equipment if applicable).
+- All War Table orders require server-side ownership/rank checks and are acknowledged, so clicking controls never silently fails.
+
+### Winner takes physical battlefield spoils, not magically created rewards
+- Soldiers carry **real allocated supplies** from the kingdom warehouse: food, arrows, iron/equipment where applicable. Those goods are subtracted from the source warehouse on dispatch.
+- Upon victory, recover a configurable portion of the **losing force's unconsumed, physically carried supplies and salvageable gear**. Losing or retreating armies keep any goods they successfully escape with. Battle destruction reduces the recoverable total.
+- Initial balancing target: up to 50–75% of remaining losing-side stores salvageable, capped by victory unit capacity; tune in playtests. No fabricated loot from a map calculation, no transfer of all city warehouse contents, no guaranteed equipment drops.
+- **MVP collection:** award recovered stackable materials to a one-time server-side **Battle Spoils ledger**, shown on the War Table. An authorized player claims the ledger into the kingdom warehouse; warehouse cap overflow remains in the ledger until space is available. For later realism, introduce caravans/battlefield collection that can be intercepted; no teleportation claim of delivered goods in that mode.
+- Resolve transfer atomically using battle ID + claim status, including concurrent multiplayer requests and crash/reload. A battle can generate its spoils only once; ownership can never be forged by the client.
+- An active war or battlefield can affect kingdom economy without a player being present, but reward amounts must correspond to actually supplied units/resources.
+
+### Performance guardrails and profiling
+- Start with configurable **24 close physical soldiers per battle** and **48 across a loaded world/server**, not promises of guaranteed capacity. Dynamically throttle nearby special effects/AI planning; never bypass the real entity cap by repeatedly spawning reserves.
+- Squad-level path plans with limited individual separation, infrequent strategic update, shared threat scans, pooled temporary render effects, compact network deltas and conditional UI refresh. Avoid full-world tick scans.
+- Watchtowers only scan their loaded, ticking regions at a fixed interval (starting target every 20 ticks), use spatial entity queries for a bounded radius, and use edge-triggered alerts instead of repeat per-tick messages.
+- Virtual warehouse aggregates resources server-side. No thousands of chest block entities, individual item stacks ticking, or global hopper searches. Transactions use capped per-tick budgets.
+- Set explicit reference-machine and encounter benchmarks; target **20 TPS**, measure tick time, active pathfinding count, heap/GC, memory, client FPS, and packets. Downshift graceful fidelity under pressure without changing casualties or item accounting.
+- Require soak tests for 2+ simultaneous battles, cross-dimension armies, player joins/logouts, chunk loading/unloading, concurrent reward claims, repeated map openings, and world restarts.
+- Never label a build "lag-free" without in-game performance evidence.
+
 ## Implementation milestones and acceptance gates
 **M1: Playable defense vertical slice.** Banner + warehouse + barracks + three unit types + basic combat + watchtower + alert/redstone + HUD rally + save persistence. Must compile, boot server, pass unit tests, work in one real client world. No claim of full game before this.
-**M2: Tactical war loop.** Squad formations, patrol/hold/retreat, ranged attacks, cavalry mounts, enemy squads, battle objectives, casualty roster persistence.
+**M2: Tactical war loop.** Squad formations, patrol/hold/retreat, ranged attacks, cavalry mounts, enemy squads, battle objectives, casualty roster persistence, War Table battlefield reports and non-duplicating battle-spoils claims.
 **M3: Kingdom logistics + AI enemy.** Supply/upkeep, troop recruitment limits, kingdom roles, automatic raid AI, defensible settlements.
 **M4: Siege + multiplayer.** Castle breach/capture mechanics, arrows/gates/objectives, permissions, multiple players ordering squads, hostile intelligence/whitelists.
 **M5: Performance, polish and release.** Profiling with Spark, sync budgets, chunk/unload tests, save migration strategy, balanced economics, usable textures/audio, client/server soak tests, public gameplay checklist.
