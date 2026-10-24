@@ -98,7 +98,9 @@ jobs:
           assert 'BLOCKS.register("mine_controller"' in table
           assert 'new BlockItem(MINE_SUPPORT.get()' in table
           assert 'new BlockItem(MINE_CONTROLLER.get()' in table
-          assert 'private static final Block MINE_SUPPORT_BLOCK' not in table\n          assert 'Properties.copy(Blocks.OAK_PLANKS)' in table\n          assert 'Properties.copy(Blocks.OAK_LOG)' not in table
+          assert 'private static final Block MINE_SUPPORT_BLOCK' not in table
+          assert 'Properties.copy(Blocks.OAK_PLANKS)' in table
+          assert 'Properties.copy(Blocks.OAK_LOG)' not in table
           assert 'private static final Block MINE_CONTROLLER_BLOCK' not in table
           assert 'MineBlocks.init' not in mines
           print('PASS: mine blocks and items share WarTable registry without early block lookup')
