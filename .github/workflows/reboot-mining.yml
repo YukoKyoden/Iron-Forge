@@ -1,0 +1,122 @@
+name: Build Iron Forge Reboot Geological Mines
+on:
+  push:
+    branches: [reboot/kingdom-warfare-core]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Gradle 8.8
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.8'
+      - name: Extract compatible original project
+        run: git show d18f39bab92e06e0b912fd3aba457e14b5b69a8e:iron-forge-source.tar.xz | tar -xJf -
+      - name: Apply Iron Forge 0.3 upgrade
+        run: xz -dc iron-forge-v030.patch.xz | patch --batch -p4
+      - name: Repair command registration nesting
+        run: sed -i '32s/$/)/;34s/$/)/;65s/);/));/' src/main/java/com/kingdomsatwar/WarCommands.java
+      - name: Fix War Table buttons and server responses
+        run: |
+          base64 -d iron-forge-map-button-fix.patch.xz.base64 | xz -dc | patch --batch -p1
+          sed -i "s/version = '0.3.0-alpha'/version = '0.3.1-alpha'/" build.gradle
+      - name: Apply Iron Forge 0.4 army warfare and diplomacy
+        run: | 
+          sed -i "s/version = '0.3.1-alpha'/version = '0.3.0-alpha'/" build.gradle
+          base64 -d patches/v040.part1 | xz -dc | patch --batch -p1
+      - name: Advance observed formations into actual melee range
+        run: base64 -d patches/v041.b64 | xz -dc | patch --batch -p1
+      - name: Add training cleanup command and GUI control
+        run: base64 -d patches/v042.b64 | xz -dc | patch --batch -p1
+      - name: Apply v0.5.0 command and training fixes
+        run: python3 ci/apply_v043.py
+      - name: Install gameplay regression suite
+        run: cp ci/WarRegressionTest.java src/test/java/com/kingdomsatwar/WarRegressionTest.java
+      - name: Apply v0.5 AI campaign, economy, and War Table changes
+        run: base64 -d patches/v050.b64 | xz -dc | patch --batch -p1
+      - name: Apply v0.6 army combat logistics and UI
+        run: base64 -d patches/v060.b64 | xz -dc | patch --batch -p1
+      - name: Integrate physical mining module
+        run: python3 reboot-module/integrate.py
+      - name: Test geological mine simulation without Minecraft
+        run: |
+          mkdir -p build/geologytest
+          javac --release 17 -d build/geologytest src/main/java/com/kingdomsatwar/MineEconomy.java src/test/java/com/kingdomsatwar/MineEconomyTest.java
+          java -cp build/geologytest com.kingdomsatwar.MineEconomyTest
+      - name: Verify command permissions and registration
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          cmd=Path('src/main/java/com/kingdomsatwar/WarCommands.java').read_text()
+          net=Path('src/main/java/com/kingdomsatwar/WarMapNetwork.java').read_text()
+          assert 'literal("skirmish").executes' in cmd
+          assert 'literal("endtest").executes' in cmd
+          assert 'literal("skirmish").requires' not in cmd
+          assert 'Training requires Creative mode or operator permission.' in cmd
+          assert 'player.isCreative()' in net
+          print('PASS: both test commands visible; practice is permission-checked at execution time.')
+          PY
+      - name: Test kingdom and warfare strategy
+        run: |
+          mkdir -p build/simtest
+          javac --release 17 -d build/simtest src/main/java/com/kingdomsatwar/WarState.java src/test/java/com/kingdomsatwar/WarStateTest.java src/test/java/com/kingdomsatwar/WarRegressionTest.java src/test/java/com/kingdomsatwar/WarCampaignTest.java src/test/java/com/kingdomsatwar/WarArmySystemsTest.java
+          java -cp build/simtest com.kingdomsatwar.WarStateTest
+          java -cp build/simtest com.kingdomsatwar.WarRegressionTest
+          java -cp build/simtest com.kingdomsatwar.WarCampaignTest
+          java -cp build/simtest com.kingdomsatwar.WarArmySystemsTest
+      - name: Build Forge 1.20.1 jar
+        run: gradle --no-daemon --stacktrace clean build
+      - name: Validate mod jar
+        run: |
+          test -f build/libs/kingdomsatwar-0.7.0-geology-alpha.jar
+          jar tf build/libs/kingdomsatwar-0.7.0-geology-alpha.jar | grep -q 'META-INF/mods.toml'
+          jar tf build/libs/kingdomsatwar-0.7.0-geology-alpha.jar | grep -q 'com/kingdomsatwar/WarTable.class'
+          jar tf build/libs/kingdomsatwar-0.7.0-geology-alpha.jar | grep -q 'com/kingdomsatwar/WarMapScreen.class'
+          jar tf build/libs/kingdomsatwar-0.7.0-geology-alpha.jar | grep -q 'com/kingdomsatwar/WarVisuals.class'
+          jar tf build/libs/kingdomsatwar-0.7.0-geology-alpha.jar | grep -q 'com/kingdomsatwar/MineEconomy.class'
+          jar tf build/libs/kingdomsatwar-0.7.0-geology-alpha.jar | grep -q 'com/kingdomsatwar/MineBlocks.class'
+          jar tf build/libs/kingdomsatwar-0.7.0-geology-alpha.jar | grep -q 'com/kingdomsatwar/MineRuntime.class'
+      - name: Headless Forge dedicated-server smoke test
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          mkdir -p run
+          echo 'eula=true' > run/eula.txt
+          set +e
+          timeout --signal=INT --kill-after=10s 170s gradle --no-daemon runServer > server-smoke.log 2>&1
+          result=$?
+          set -e
+          if grep -Eq 'Done \(.*\)! For help|Done \(.*\)!|Done .* For help' server-smoke.log run/logs/latest.log 2>/dev/null; then
+            echo 'PASS: dedicated server reached ready state'
+          else
+            echo 'SERVER SMOKE NOT VERIFIED; see server-smoke.log'
+            tail -n 100 server-smoke.log
+            exit 1
+          fi
+      - name: Upload server startup log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iron-forge-reboot-geology-server-smoke
+          path: |
+            server-smoke.log
+            run/logs/latest.log
+          if-no-files-found: ignore
+      - name: Upload mod for CurseForge profile
+        uses: actions/upload-artifact@v4
+        with:
+          name: iron-forge-reboot-geological-mines-0.7.0
+          path: build/libs/kingdomsatwar-0.7.0-geology-alpha.jar
+          if-no-files-found: error
