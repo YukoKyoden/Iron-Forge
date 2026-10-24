@@ -24,28 +24,25 @@ text = war_table.read_text()
 anchor = "    private WarTable() {}"
 assert anchor in text, "Could not find WarTable registration anchor"
 registration = """
-    // Mine blocks use this same known-working registry as the War Table.
-    // Reuse the *same* concrete blocks for block registration and BlockItems:
-    // no deferred RegistryObject.get() calls during Item registration.
-    private static final Block MINE_CONTROLLER_BLOCK =
-        new Block(BlockBehaviour.Properties.copy(Blocks.STONE_BRICKS).strength(3.5f)) {
-            @Override public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
-                if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
-                    MineRuntime.instance().interact(serverPlayer, pos);
-                }
-                return InteractionResult.sidedSuccess(level.isClientSide);
-            }
-        };
-    private static final Block MINE_SUPPORT_BLOCK =
-        new Block(BlockBehaviour.Properties.copy(Blocks.OAK_LOG).strength(2.5f));
+    // Mine entries share the WarTable DeferredRegisters. Instantiate blocks
+    // only within block registry callbacks, never during static initialization.
     public static final RegistryObject<Block> MINE_CONTROLLER =
-        BLOCKS.register("mine_controller", () -> MINE_CONTROLLER_BLOCK);
+        BLOCKS.register("mine_controller", () ->
+            new Block(BlockBehaviour.Properties.copy(Blocks.STONE_BRICKS).strength(3.5f)) {
+                @Override public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+                    if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
+                        MineRuntime.instance().interact(serverPlayer, pos);
+                    }
+                    return InteractionResult.sidedSuccess(level.isClientSide);
+                }
+            });
     public static final RegistryObject<Block> MINE_SUPPORT =
-        BLOCKS.register("mine_support", () -> MINE_SUPPORT_BLOCK);
+        BLOCKS.register("mine_support", () ->
+            new Block(BlockBehaviour.Properties.copy(Blocks.OAK_LOG).strength(2.5f)));
     public static final RegistryObject<Item> MINE_CONTROLLER_ITEM =
-        ITEMS.register("mine_controller", () -> new BlockItem(MINE_CONTROLLER_BLOCK, new Item.Properties()));
+        ITEMS.register("mine_controller", () -> new BlockItem(MINE_CONTROLLER.get(), new Item.Properties()));
     public static final RegistryObject<Item> MINE_SUPPORT_ITEM =
-        ITEMS.register("mine_support", () -> new BlockItem(MINE_SUPPORT_BLOCK, new Item.Properties()));
+        ITEMS.register("mine_support", () -> new BlockItem(MINE_SUPPORT.get(), new Item.Properties()));
 """
 assert "MINE_SUPPORT_ITEM" not in text, "Mine already registered"
 text = text.replace(anchor,registration+"\n"+anchor,1)
@@ -74,12 +71,12 @@ state.write_text(s)
 
 gradle=Path("build.gradle")
 s=gradle.read_text()
-s,n=re.subn(r"version = '[^']+'","version = '0.7.1-geology-fix'",s,count=1)
+s,n=re.subn(r"version = '[^']+'","version = '0.7.2-geology-registry-fix'",s,count=1)
 assert n
 gradle.write_text(s)
 toml=Path("src/main/resources/META-INF/mods.toml")
 s=toml.read_text()
-s,n=re.subn(r'(?m)^version="[^"]+"','version="0.7.1-geology-fix"',s,count=1)
+s,n=re.subn(r'(?m)^version="[^"]+"','version="0.7.2-geology-registry-fix"',s,count=1)
 assert n
 toml.write_text(s)
 print("Reboot mining module integrated, passive iron disabled, version updated.")
