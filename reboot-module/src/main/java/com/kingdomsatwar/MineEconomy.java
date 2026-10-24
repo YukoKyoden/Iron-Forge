@@ -9,12 +9,12 @@ public final class MineEconomy {
     public static final int MAX_DISTANCE=48, MIN_SPACING=8;
     public static final class Mine {
         public final String id,owner,dimension; public final int x,y,z,quality;
-        public int reserve,workers; public final Set<String> supports=new LinkedHashSet<>();
+        public int reserve,workers; public boolean built=false; public final Set<String> supports=new LinkedHashSet<>();
         Mine(String id,String owner,String dim,int x,int y,int z,int quality,int reserve){
             this.id=id;this.owner=owner;this.dimension=dim;this.x=x;this.y=y;this.z=z;
             this.quality=quality;this.reserve=reserve;
         }
-        public int maxWorkers(){return Math.min(MAX_WORKERS,supports.size()*2);}
+        public int maxWorkers(){return built ? 2 : 0;}
     }
     public record Result(boolean ok,String message){}
     private final Map<String,Mine> mines=new LinkedHashMap<>();
@@ -44,7 +44,7 @@ public final class MineEconomy {
         if(mines.values().stream().filter(m->m.owner.equals(owner)).count()>=MAX_MINES_PER_KINGDOM) return new Result(false,"Your kingdom has reached its mine limit.");
         for(Mine m:mines.values()) if(m.dimension.equals(dim)&&Math.abs(m.x-x)<64&&Math.abs(m.z-z)<64) return new Result(false,"Another mine is too close (64 blocks).");
         mines.put(id,new Mine(id,owner,dim,x,y,z,quality(seed,dim,x,z),initialReserve(seed,dim,x,z)));
-        return new Result(true,"Mine registered. Extend supported tunnels and sneak-right-click to assign miners.");
+        return new Result(true,"Mine controller registered. Open the construction chest, fill it, and sneak-right-click to construct.");
     }
     public Mine nearest(String owner,String dim,int x,int y,int z) {
         Mine best=null;double distance=Double.MAX_VALUE;
@@ -75,9 +75,15 @@ public final class MineEconomy {
         return removed;
     }
     public boolean removeMine(String dim,int x,int y,int z) {return mines.remove(key(dim,x,y,z))!=null;}
+    public Result completeBuild(String mineId){
+        Mine m=mines.get(mineId);if(m==null)return new Result(false,"Mine not registered.");
+        if(m.built)return new Result(false,"Mine already constructed.");
+        m.built=true;return new Result(true,"Level 1 iron mine completed. Assign workers to begin production.");
+    }
     public Result addWorker(String mineId){
         Mine m=mines.get(mineId);if(m==null)return new Result(false,"Mine not found.");
-        if(m.workers>=m.maxWorkers())return new Result(false,"More valid tunnel supports are required.");
+        if(!m.built)return new Result(false,"Construct the mine first.");
+        if(m.workers>=m.maxWorkers())return new Result(false,"Level 1 mine supports a maximum of 2 workers.");
         m.workers++;return new Result(true,"Workers: "+m.workers+"/"+m.maxWorkers());
     }
     public Result removeWorker(String mineId){
@@ -87,7 +93,7 @@ public final class MineEconomy {
     }
     /** Once-per-minute payout. The caller supplies current warehouse capacity and adds result atomically. */
     public int payout(Mine m,int remainingWarehouseRoom){
-        if(m==null||m.workers<=0||m.supports.isEmpty()||m.reserve<=0||remainingWarehouseRoom<=0)return 0;
+        if(m==null||!m.built||m.workers<=0||m.reserve<=0||remainingWarehouseRoom<=0)return 0;
         int perMinute=Math.min(40,Math.min(m.workers,m.maxWorkers())*(m.quality+1));
         int out=Math.max(0,Math.min(Math.min(m.reserve,remainingWarehouseRoom),perMinute));
         m.reserve-=out;return out;
@@ -98,7 +104,7 @@ public final class MineEconomy {
             String b="mine."+(i++)+".";
             p.setProperty(b+"id",m.id);p.setProperty(b+"owner",m.owner);p.setProperty(b+"dim",m.dimension);
             p.setProperty(b+"x",""+m.x);p.setProperty(b+"y",""+m.y);p.setProperty(b+"z",""+m.z);
-            p.setProperty(b+"quality",""+m.quality);p.setProperty(b+"reserve",""+m.reserve);p.setProperty(b+"workers",""+m.workers);
+            p.setProperty(b+"quality",""+m.quality);p.setProperty(b+"reserve",""+m.reserve);p.setProperty(b+"workers",""+m.workers);p.setProperty(b+"built",Boolean.toString(m.built));
             p.setProperty(b+"supports",String.join(";",m.supports));
         }
         Files.createDirectories(file.getParent());Path tmp=file.resolveSibling(file.getFileName()+".tmp");
@@ -120,6 +126,7 @@ public final class MineEconomy {
             for(String v:p.getProperty(b+"supports","").split(";"))if(!v.isBlank()&&m.supports.size()<MAX_SUPPORTS){
                 try{int[] a=position(v);m.supports.add(key(dim,a[0],a[1],a[2]));}catch(Exception ignore){}
             }
+            m.built=Boolean.parseBoolean(p.getProperty(b+"built","false"));
             m.workers=Math.max(0,Math.min(m.maxWorkers(),number(p,b+"workers",0)));
             e.mines.put(m.id,m);
         }
