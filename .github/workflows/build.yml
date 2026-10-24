@@ -44,7 +44,8 @@ jobs:
           test -f build/libs/kingdomsatwar-0.4.0-alpha.jar
           jar tf build/libs/kingdomsatwar-0.4.0-alpha.jar | grep -q 'META-INF/mods.toml'
           jar tf build/libs/kingdomsatwar-0.4.0-alpha.jar | grep -q 'com/kingdomsatwar/WarTable.class'
-          jar tf build/libs/kingdomsatwar-0.4.0-alpha.jar | grep -q 'com/kingdomsatwar/WarMapScreen.class'\n          jar tf build/libs/kingdomsatwar-0.4.0-alpha.jar | grep -q 'com/kingdomsatwar/WarVisuals.class'
+          jar tf build/libs/kingdomsatwar-0.4.0-alpha.jar | grep -q 'com/kingdomsatwar/WarMapScreen.class'
+          jar tf build/libs/kingdomsatwar-0.4.0-alpha.jar | grep -q 'com/kingdomsatwar/WarVisuals.class'
       - name: Upload mod for CurseForge profile
         uses: actions/upload-artifact@v4
         with:
