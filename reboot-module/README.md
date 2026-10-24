@@ -1,28 +1,29 @@
-# Iron Forge — Geological Mining Preview (0.7.4 alpha)
-**Development branch**: `reboot/kingdom-warfare-core`. This preview temporarily includes the legacy v0.6 warfare features while the Recruits-style reboot is built. It is NOT the finished reboot game.
+# Iron Forge v0.8.0 — construction-chest mining alpha
+**Minecraft Java 1.20.1 · Forge 47.x · reboot branch.** This remains an experimental mod, **not the finished kingdom warfare reboot**.
 
-## In-game test
-1. Back up your Minecraft Forge 1.20.1 world.
-2. Remove the older `kingdomsatwar-*.jar` before placing the new compiled JAR in `mods`. Never install both.
-3. Create a kingdom with the existing War Table or `/war found MyKingdom`.
-4. Dig down underground **anywhere**, between Y -55 and Y 55. You only need to belong to a kingdom; manual chunk claims are no longer required.
-5. Craft or get a **Mine Controller**: `/give @s kingdomsatwar:mine_controller`. Place it underground. No chunk claim is required.
-6. Dig a walkable underground tunnel with **stone/deepslate/other rock around it**. Create a 3-block-high passage.
-7. Place **Timber Supports**: `/give @s kingdomsatwar:mine_support`. Supports must have 4+ natural-looking rock cells sampled at 2–3 blocks away on horizontal sides, open tunnel passage along an axis, and 8 blocks of spacing from other supports. Limit 24 supports, within 48 blocks of controller and 18 vertical.
-8. Right-click the Mine Controller to see deposit richness (1–5), remaining reserves, support count, assigned workers and iron/min.
-9. **Sneak-right-click** the controller to assign one more worker. Each registered support allows two workers; max 24.
-10. Wait one minute of server runtime; open the original War Table and verify the kingdom's **iron resource count** increases. Resources are accounting units for the kingdom; **physical inventory withdrawal is planned for the warehouse milestone**, and is NOT in this preview.
-11. Break a registered support; its bonus worker slots disappear. Break the controller to remove the registered mine.
+## What changed since v0.7.4
+The confusing manual Timber Support detection has been removed from mine production. Each new Mine Controller has a real 27-slot Minecraft chest inventory, a starter mine building blueprint, and a construction action. Mine production starts **only after construction completes and workers are assigned**. No manual chunk claiming is required for mines.
 
-## Limitations
-- This first pass samples local rock only when a support is placed; it does not scan huge parts of the world.
-- No path connectivity test between support and controller yet; the range and spacing prevent compact support spam, but elaborate tunnel shapes are not audited.
-- Region-level reserve/richness uses seed+dimension+128-block region, not literal nearby vanilla ore counts. You can't increase reserves by placing ore blocks.
-- One registered mine per 64-block neighborhood; max 8 per kingdom. Mine supplies are capped by warehouse iron room of 10,000.
-- Mines don't operate when the server is shut down. Unloaded mines continue **data-only** production every minute, with no forced chunk loading.
-- Supports are currently simple placeable blocks, without custom wooden beam visuals.
-- No playable Recruits-style army reboot or watchtower/warehouse UI yet. Do not present this preview as the fully completed mod.
-- Older abstract **mine** upgrades in the War Table are disabled with an explanatory message so they cannot consume resources while producing nothing.
+## Playtest: constructing a mine
+1. Back up your test world. Replace, don't combine, older `kingdomsatwar-*.jar` files.
+2. In Creative, get a War Table with `/give @s kingdomsatwar:war_table`. Found a kingdom **using the War Table menu**; the inherited `/war` command set has user-reported bugs and is still under investigation.
+3. Travel below Y55 but not below Y-55. Find a site near natural stone/deepslate. Set the front of the Mine Controller toward the rock you want to excavate. Hold an empty hand when interacting.
+4. Get `/give @s kingdomsatwar:mine_controller` and place it; you should receive a **registered** message.
+5. **Right-click** the controller to open a chest-like **27-slot construction inventory**. Deposit **64 Oak Logs, 128 Cobblestone and 16 Iron Ingots**. Other wood/stone items do not count in this prototype.
+6. Close the chest; **sneak-right-click with an empty hand** to start the build. The blueprint builds an approximately **3×3×8 tunnel** in front of the controller over a few seconds, adding cobblestone floor and spruce-log support frames.
+7. If you see an obstruction warning, move the controller/clear the indicated position. The builder only automatically replaces **air or natural stone/deepslate/tuff/andesite/diorite/granite**. It refuses ores, containers, liquids, player-built structures, and unloaded footprint chunks. It does not take materials until the whole blueprint passes a preflight check.
+8. Once built, **sneak-right-click** to assign one worker (repeat for second worker). Right-click for geological reserve/quality and iron/min. Iron is credited to your **kingdom resource balance**, not your player inventory. Maximum 2 workers for this first blueprint.
+9. Exit/reload your world and verify the chest inventory, construction, workers and reserve persist. Construction progress should save if the chunk unloads.
+10. Try an insufficient-material or blocked-site construction in another location. It should refuse without deducting any materials.
 
-## Build and QA
-The `.github/workflows/reboot-mining.yml` GitHub Action assembles the last compatible codebase, installs this module and resources, runs 28 geological tests plus the inherited combat regression suite, builds a reobfuscated Forge JAR, checks for the new classes, and starts a headless dedicated server for a smoke test. In-game tests are still required. 
+## Known limitations, not yet implemented
+- Build interaction uses **sneak-right-click**, not a custom on-screen **Construct** button yet; the chest GUI itself is vanilla.
+- Only **Level 1 iron mine** is available; further blueprints, farms, farms and resource withdrawals are future work.
+- The old decorative Mine Support item still exists to avoid removing a block ID from existing worlds, but placing it has no production effect.
+- The mine builder never fabricates ore items or scans huge terrain areas.
+- There is no strong refund/recovery path for a mid-build obstruction introduced by another player, and no cross-mod land protection integration yet; test on backed-up worlds.
+- The older War Table has legacy claim and `/war` command mechanics. They are **not** the future design; the Town Hall, role-based army simulation, Recruits integrations, capturable towns and warehouse are still pending.
+- User-facing gameplay still requires verification on Windows even when GitHub's automated Forge client/server startup tests pass.
+
+## Verification
+`.github/workflows/reboot-mining.yml` builds and checks the mod JAR, runs model regressions and checks client and dedicated-server startup. This is not a substitute for in-world construction testing.
