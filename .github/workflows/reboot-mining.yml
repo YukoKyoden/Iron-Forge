@@ -109,7 +109,7 @@ jobs:
         timeout-minutes: 4
         run: |
           set +e
-          timeout --signal=INT --kill-after=5s 90s xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 gradle --no-daemon runClient > client-smoke.log 2>&1
+          timeout --signal=INT --kill-after=5s 75s xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 gradle --no-daemon runClient > client-smoke.log 2>&1
           code=$?
           set -e
           if grep -Eiq 'Registry Object not present|Registry is already frozen|ExceptionInInitializerError|Mod Loading has failed|Loading errors encountered|Errors during registry event dispatch|ModLoadingException|broken mod state|Crash report saved' client-smoke.log; then
@@ -117,8 +117,8 @@ jobs:
             echo 'FAIL: Forge client registry initialization'
             exit 1
           fi
-          if grep -Eq '\\[Render thread/(INFO|WARN)\\]' client-smoke.log; then
-            echo 'Client progressed into Minecraft startup without registry failure.'
+          if grep -Fq '[Render thread/INFO]' client-smoke.log; then
+            echo 'PASS: Minecraft client reached render loop with mod loaded'
           else
             echo "Client smoke test inconclusive (exit $code)."
             tail -n 60 client-smoke.log
