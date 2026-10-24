@@ -49,7 +49,7 @@ public final class MineRuntime {
         if(controller){
             WarState.Claim claim=game.claimAt(dimension,WarState.chunk(p.getX()),WarState.chunk(p.getZ()));
             if(claim==null||!claim.owner.equals(k.id)){tell(player,"A mine controller must be on your kingdom's claimed land.");return;}
-            MineEconomy.Result r=model.register(k.id,dimension,level.getSeed(),p.getX(),p.getY(),p.getZ());
+            MineEconomy.Result r=model.register(k.id,dimension,player.serverLevel().getSeed(),p.getX(),p.getY(),p.getZ());
             tell(player,r.message());
             if(r.ok())save();
         }else{
