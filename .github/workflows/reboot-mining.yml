@@ -102,7 +102,11 @@ jobs:
           assert 'Properties.copy(Blocks.OAK_PLANKS)' in table
           assert 'Properties.copy(Blocks.OAK_LOG)' not in table
           assert 'private static final Block MINE_CONTROLLER_BLOCK' not in table
-          assert 'MineBlocks.init' not in mines\n          runtime=Path('src/main/java/com/kingdomsatwar/MineRuntime.java').read_text()\n          assert 'game.claimAt(' not in runtime\n          assert 'A mine controller must be on your kingdom' not in runtime\n          print('PASS: mining has no manual chunk-claim prerequisite')
+          assert 'MineBlocks.init' not in mines
+          runtime=Path('src/main/java/com/kingdomsatwar/MineRuntime.java').read_text()
+          assert 'game.claimAt(' not in runtime
+          assert 'A mine controller must be on your kingdom' not in runtime
+          print('PASS: mining has no manual chunk-claim prerequisite')
           print('PASS: mine blocks and items share WarTable registry without early block lookup')
           PY
       - name: Headless Minecraft client registry smoke
