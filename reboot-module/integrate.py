@@ -13,7 +13,7 @@ entry=Path("src/main/java/com/kingdomsatwar/KingdomsAtWar.java")
 s=entry.read_text()
 needle="WarTable.init(FMLJavaModLoadingContext.get().getModEventBus());"
 assert needle in s
-s=s.replace(needle,needle+"MineControllerBlockEntity.init(FMLJavaModLoadingContext.get().getModEventBus());MinecraftForge.EVENT_BUS.register(MineRuntime.instance());",1)
+s=s.replace(needle,needle+"MineControllerBlockEntity.init(FMLJavaModLoadingContext.get().getModEventBus());IronRecruitRegistry.init(FMLJavaModLoadingContext.get().getModEventBus());MinecraftForge.EVENT_BUS.register(MineRuntime.instance());MinecraftForge.EVENT_BUS.register(IronRecruitRuntime.instance());",1)
 entry.write_text(s)
 
 # Share the existing WarTable DeferredRegisters with the mine blocks/items.
@@ -63,12 +63,12 @@ state.write_text(s)
 
 gradle=Path("build.gradle")
 s=gradle.read_text()
-s,n=re.subn(r"version = '[^']+'","version = '0.8.0-construction-alpha'",s,count=1)
+s,n=re.subn(r"version = '[^']+'","version = '0.9.0-recruits-alpha'",s,count=1)
 assert n
 gradle.write_text(s)
 toml=Path("src/main/resources/META-INF/mods.toml")
 s=toml.read_text()
-s,n=re.subn(r'(?m)^version="[^"]+"','version="0.8.0-construction-alpha"',s,count=1)
+s,n=re.subn(r'(?m)^version="[^"]+"','version="0.9.0-recruits-alpha"',s,count=1)
 assert n
 toml.write_text(s)
 print("Reboot mining module integrated, passive iron disabled, version updated.")
