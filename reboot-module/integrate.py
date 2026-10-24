@@ -13,8 +13,43 @@ entry=Path("src/main/java/com/kingdomsatwar/KingdomsAtWar.java")
 s=entry.read_text()
 needle="WarTable.init(FMLJavaModLoadingContext.get().getModEventBus());"
 assert needle in s
-s=s.replace(needle,needle+"MineBlocks.init(FMLJavaModLoadingContext.get().getModEventBus());MinecraftForge.EVENT_BUS.register(MineRuntime.instance());",1)
+s=s.replace(needle,needle+"MinecraftForge.EVENT_BUS.register(MineRuntime.instance());",1)
 entry.write_text(s)
+
+# Share the existing WarTable DeferredRegisters with the mine blocks/items.
+# In the first preview the standalone mine DeferredRegisters caused an early
+# RegistryObject#get() on the client before mine_support was present.
+war_table = Path("src/main/java/com/kingdomsatwar/WarTable.java")
+text = war_table.read_text()
+anchor = "    private WarTable() {}"
+assert anchor in text, "Could not find WarTable registration anchor"
+registration = """
+    // Mine blocks use this same known-working registry as the War Table.
+    // Reuse the *same* concrete blocks for block registration and BlockItems:
+    // no deferred RegistryObject.get() calls during Item registration.
+    private static final Block MINE_CONTROLLER_BLOCK =
+        new Block(BlockBehaviour.Properties.copy(Blocks.STONE_BRICKS).strength(3.5f)) {
+            @Override public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+                if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
+                    MineRuntime.instance().interact(serverPlayer, pos);
+                }
+                return InteractionResult.sidedSuccess(level.isClientSide);
+            }
+        };
+    private static final Block MINE_SUPPORT_BLOCK =
+        new Block(BlockBehaviour.Properties.copy(Blocks.OAK_LOG).strength(2.5f));
+    public static final RegistryObject<Block> MINE_CONTROLLER =
+        BLOCKS.register("mine_controller", () -> MINE_CONTROLLER_BLOCK);
+    public static final RegistryObject<Block> MINE_SUPPORT =
+        BLOCKS.register("mine_support", () -> MINE_SUPPORT_BLOCK);
+    public static final RegistryObject<Item> MINE_CONTROLLER_ITEM =
+        ITEMS.register("mine_controller", () -> new BlockItem(MINE_CONTROLLER_BLOCK, new Item.Properties()));
+    public static final RegistryObject<Item> MINE_SUPPORT_ITEM =
+        ITEMS.register("mine_support", () -> new BlockItem(MINE_SUPPORT_BLOCK, new Item.Properties()));
+"""
+assert "MINE_SUPPORT_ITEM" not in text, "Mine already registered"
+text = text.replace(anchor,registration+"\n"+anchor,1)
+war_table.write_text(text)
 
 state=Path("src/main/java/com/kingdomsatwar/WarState.java")
 s=state.read_text()
