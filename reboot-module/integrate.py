@@ -38,7 +38,7 @@ registration = """
             });
     public static final RegistryObject<Block> MINE_SUPPORT =
         BLOCKS.register("mine_support", () ->
-            new Block(BlockBehaviour.Properties.copy(Blocks.OAK_LOG).strength(2.5f)));
+            new Block(BlockBehaviour.Properties.copy(Blocks.OAK_PLANKS).strength(2.5f)));
     public static final RegistryObject<Item> MINE_CONTROLLER_ITEM =
         ITEMS.register("mine_controller", () -> new BlockItem(MINE_CONTROLLER.get(), new Item.Properties()));
     public static final RegistryObject<Item> MINE_SUPPORT_ITEM =
@@ -71,12 +71,12 @@ state.write_text(s)
 
 gradle=Path("build.gradle")
 s=gradle.read_text()
-s,n=re.subn(r"version = '[^']+'","version = '0.7.2-geology-registry-fix'",s,count=1)
+s,n=re.subn(r"version = '[^']+'","version = '0.7.3-geology-hotfix'",s,count=1)
 assert n
 gradle.write_text(s)
 toml=Path("src/main/resources/META-INF/mods.toml")
 s=toml.read_text()
-s,n=re.subn(r'(?m)^version="[^"]+"','version="0.7.2-geology-registry-fix"',s,count=1)
+s,n=re.subn(r'(?m)^version="[^"]+"','version="0.7.3-geology-hotfix"',s,count=1)
 assert n
 toml.write_text(s)
 print("Reboot mining module integrated, passive iron disabled, version updated.")
