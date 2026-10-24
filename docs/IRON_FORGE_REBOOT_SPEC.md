@@ -7,6 +7,17 @@ A Minecraft-native, Recruits-inspired kingdom defense and warfare game. Players 
 
 We are **inspired** by Villager Recruits; we will not copy its proprietary code or assets. Initially build independent Forge entities rather than require or modify the third-party mod. Compatibility can be evaluated separately.
 
+## Territory without manual chunk claiming (design decision Oct 2026)
+- **No clicking or manually selecting chunks for normal Iron Forge gameplay.** The old claim-grid workflow is deprecated. In the live mining preview, registering a Mine Controller requires kingdom membership and valid geology, **not any claimed chunk**.
+- In the full reboot, **placing a Town Hall / Town Banner creates one automatically managed, bounded territory** (initial proposal 96 block radius, configurable). Show its border and settlement status on the War Table, not individual claim squares.
+- Nearby mines, farms, barracks, watchtowers and resource sites register themselves to the relevant town by position and kingdom ownership. New towns and land extensions require a real settlement/outpost and a cost or captured banner, never hand-painting a map.
+- Territory ownership, capture, and production are stored in lightweight Iron Forge records. They do not require loading terrain/chunks, per-block resource scans, or force-loading chunks.
+- Use a compact server-side ownership-index of town shapes for placement/security checks. Resolve overlaps by explicit contest/capture rules; never silently overwrite another kingdom's center. Add grief protection independently with forge events or optional integrations.
+- **Optional mod compatibility**, not a hard dependency: Villager Recruits may supply physical soldier gameplay if supported via explicit adapters; Open Parties and Claims or FTB Chunks may supply additional protection/party integration; Towns and Towers may provide discoverable settlement structures; MineColonies is a heavy alternative colony experience, not the default economy core. Verify same-version APIs, licenses, permissions, performance and player choice before binding to any external mod.
+- Keep a standalone core: War Table strategy, strategic army simulation, production ledger, town capture and territory remain ours; do not copy other mods' licensed code/assets.
+- Acceptance criterion: new player founds a kingdom and places a Town Hall, registers and runs a mine, recruits defenders and sees territory on the War Table **without ever invoking a claim-chunk command or menu**.
+- Current v0.7.4 mining preview only removes mine claim requirements; it **does not yet implement automatic town territories or third-party adapters**, and older v0.x gameplay may still expose legacy claim mechanics.
+
 ## One-minute gameplay loop
 1. Place **Kingdom Banner** to found and name a kingdom.
 2. Place one **Kingdom Warehouse** to store shared building, food, and recruitment resources.
