@@ -3,32 +3,32 @@ on:
   push:
     branches: [kingdoms-claims-restart-v01]
     paths:
-      - Kingdoms_Claims_Forge_1.20.1_Source_v0.1.zip
+      - restart-payload/**
       - .github/workflows/build-kingdoms-claims-restart.yml
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - name: Java 17
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - name: Gradle 8.8
+      - name: Set up Gradle 8.8
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.8'
-      - name: Unpack restart project
+      - name: Unpack separate restart project
         run: |
-          test -f Kingdoms_Claims_Forge_1.20.1_Source_v0.1.zip || { echo "::error::Upload the source ZIP to this branch root"; exit 1; }
-          unzip -q Kingdoms_Claims_Forge_1.20.1_Source_v0.1.zip
+          mkdir -p kingdoms-claims-forge
+          cat restart-payload/part*.b64 | base64 --decode | tar -xJ -C kingdoms-claims-forge
+          test -f kingdoms-claims-forge/build.gradle
+          find kingdoms-claims-forge/src/main/java -name '*.java'
       - name: Build Forge 1.20.1 mod
         working-directory: kingdoms-claims-forge
         run: gradle --no-daemon --stacktrace clean build
