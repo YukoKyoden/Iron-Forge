@@ -1,0 +1,55 @@
+name: Build Kingdoms Claims v0.2.2 Town Hall
+on:
+  push:
+    branches: [kingdoms-claims-v022]
+    paths:
+      - ci/kingdomsclaims-v022.tar.xz.base64
+      - .github/workflows/build-kingdomsclaims-v022.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.8'
+      - name: Extract v0.2.2 source and check recipes
+        run: |
+          base64 -d ci/kingdomsclaims-v022.tar.xz.base64 | tar -xJf -
+          python3 kingdoms-claims-forge/tests/source_checks.py
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          base=Path('kingdoms-claims-forge/src/main/resources/data/kingdomsclaims/recipes')
+          for name in ('town_banner','kingdom_banner'):
+              f=base/f'{name}.json'
+              data=json.loads(f.read_text())
+              assert data['result']['item']==f'kingdomsclaims:{name}'
+          print('PASS: both banner crafting recipes')
+          PY
+      - name: Build Forge Minecraft 1.20.1 JAR
+        working-directory: kingdoms-claims-forge
+        run: gradle --no-daemon --stacktrace clean build
+      - name: Validate GUI classes, recipes and mod packaging
+        run: |
+          JAR=kingdoms-claims-forge/build/libs/kingdomsclaims-0.2.2.jar
+          test -f "$JAR"
+          jar tf "$JAR" | grep -q 'META-INF/mods.toml'
+          jar tf "$JAR" | grep -q 'com/kingdomsclaims/TownHallClient.class'
+          jar tf "$JAR" | grep -q 'com/kingdomsclaims/TownHallNetwork.class'
+          jar tf "$JAR" | grep -q 'data/kingdomsclaims/recipes/town_banner.json'
+          jar tf "$JAR" | grep -q 'data/kingdomsclaims/recipes/kingdom_banner.json'
+      - name: Upload installable mod
+        uses: actions/upload-artifact@v4
+        with:
+          name: kingdomsclaims-v0.2.2-town-hall-forge-1.20.1
+          path: kingdoms-claims-forge/build/libs/kingdomsclaims-0.2.2.jar
+          if-no-files-found: error
