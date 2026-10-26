@@ -1,0 +1,44 @@
+name: Build Kingdoms Claims v0.2.1
+on:
+  push:
+    branches: [kingdoms-claims-v021]
+    paths:
+      - ci/kingdomsclaims-v021.tar.xz.base64
+      - .github/workflows/build-kingdomsclaims-v021.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.8'
+      - name: Extract v0.2.1 project
+        run: |
+          base64 -d ci/kingdomsclaims-v021.tar.xz.base64 | tar -xJf -
+          python3 kingdoms-claims-forge/tests/source_checks.py
+      - name: Build Forge Minecraft 1.20.1 mod
+        working-directory: kingdoms-claims-forge
+        run: gradle --no-daemon --stacktrace clean build
+      - name: Validate Forge JAR and compiled classes
+        run: |
+          JAR=kingdoms-claims-forge/build/libs/kingdomsclaims-0.2.1.jar
+          test -f "$JAR"
+          jar tf "$JAR" | grep -q 'META-INF/mods.toml'
+          jar tf "$JAR" | grep -q 'com/kingdomsclaims/TownCommands.class'
+          jar tf "$JAR" | grep -q 'com/kingdomsclaims/TerritoryNetwork.class'
+          jar tf "$JAR" | grep -q 'com/kingdomsclaims/KingdomData.class'
+      - name: Upload installable mod JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: kingdomsclaims-v0.2.1-forge-1.20.1
+          path: kingdoms-claims-forge/build/libs/kingdomsclaims-0.2.1.jar
+          if-no-files-found: error
