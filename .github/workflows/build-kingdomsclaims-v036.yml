@@ -1,0 +1,44 @@
+name: Build Kingdoms Claims v0.3.6 Expeditions & Operations
+on:
+  push:
+    branches: [kingdoms-claims-v036]
+    paths:
+      - ci/kingdomsclaims-v036.tar.xz.base64
+      - .github/workflows/build-kingdomsclaims-v036.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.8'
+      - name: Extract and validate resource operation systems
+        run: |
+          base64 -d ci/kingdomsclaims-v036.tar.xz.base64 | tar -xJf -
+          python3 kingdoms-claims-forge/tests/source_checks.py
+      - name: Compile Forge Minecraft 1.20.1
+        working-directory: kingdoms-claims-forge
+        run: gradle --no-daemon --stacktrace clean build
+      - name: Verify installable JAR and operations
+        run: |
+          JAR=kingdoms-claims-forge/build/libs/kingdomsclaims-0.3.6.jar
+          test -f "$JAR"
+          jar tf "$JAR" | grep -q 'META-INF/mods.toml'
+          for cl in OperationsData OperationsService OperationsNetwork WarMapClient MilitaryData; do jar tf "$JAR" | grep -q "com/kingdomsclaims/${cl}.class"; done
+          jar tf "$JAR" | grep -q 'assets/kingdomsclaims/textures/entity/uniform_royal.png'
+          jar tf "$JAR" | grep -q 'data/kingdomsclaims/recipes/war_table.json'
+      - name: Upload built JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: kingdomsclaims-v0.3.6-forge-1.20.1
+          path: kingdoms-claims-forge/build/libs/kingdomsclaims-0.3.6.jar
+          if-no-files-found: error
