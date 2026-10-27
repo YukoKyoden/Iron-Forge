@@ -1,0 +1,46 @@
+name: Build Kingdoms Claims v0.3.2 Army Movement
+on:
+  push:
+    branches: [kingdoms-claims-v032]
+    paths:
+      - ci/kingdomsclaims-v032.tar.xz.base64
+      - .github/workflows/build-kingdomsclaims-v032.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.8'
+      - name: Extract source and validate movement, skins, ledger
+        run: |
+          base64 -d ci/kingdomsclaims-v032.tar.xz.base64 | tar -xJf -
+          python3 kingdoms-claims-forge/tests/source_checks.py
+      - name: Compile Forge 1.20.1 mod
+        working-directory: kingdoms-claims-forge
+        run: gradle --no-daemon --stacktrace clean build
+      - name: Verify JAR assets and classes
+        run: |
+          JAR=kingdoms-claims-forge/build/libs/kingdomsclaims-0.3.2.jar
+          test -f "$JAR"
+          jar tf "$JAR" | grep -q 'META-INF/mods.toml'
+          jar tf "$JAR" | grep -q 'com/kingdomsclaims/MilitaryData.class'
+          jar tf "$JAR" | grep -q 'com/kingdomsclaims/WarTableService.class'
+          jar tf "$JAR" | grep -q 'com/kingdomsclaims/SoldierRenderer.class'
+          jar tf "$JAR" | grep -q 'com/kingdomsclaims/SoldierEntity.class'
+          for skin in crimson royal forest sand; do jar tf "$JAR" | grep -q "assets/kingdomsclaims/textures/entity/uniform_${skin}.png"; done
+      - name: Upload installable mod
+        uses: actions/upload-artifact@v4
+        with:
+          name: kingdomsclaims-v0.3.2-forge-1.20.1
+          path: kingdoms-claims-forge/build/libs/kingdomsclaims-0.3.2.jar
+          if-no-files-found: error
