@@ -1,0 +1,47 @@
+name: Build Kingdoms Claims v0.2.5 Banner Fix and Self-Merge
+on:
+  push:
+    branches: [kingdoms-claims-v025]
+    paths:
+      - ci/kingdomsclaims-v025.tar.xz.base64
+      - .github/workflows/build-kingdomsclaims-v025.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.8'
+      - name: Extract v0.2.5 project and verify model texture paths
+        run: |
+          base64 -d ci/kingdomsclaims-v025.tar.xz.base64 | tar -xJf -
+          python3 kingdoms-claims-forge/tests/source_checks.py
+      - name: Compile Minecraft Forge 1.20.1 JAR
+        working-directory: kingdoms-claims-forge
+        run: gradle --no-daemon --stacktrace clean build
+      - name: Verify JAR contents
+        run: |
+          JAR=kingdoms-claims-forge/build/libs/kingdomsclaims-0.2.5.jar
+          test -f "$JAR"
+          jar tf "$JAR" | grep -q 'META-INF/mods.toml'
+          jar tf "$JAR" | grep -q 'com/kingdomsclaims/TownHallClient.class'
+          jar tf "$JAR" | grep -q 'com/kingdomsclaims/TownHallNetwork.class'
+          jar tf "$JAR" | grep -q 'assets/kingdomsclaims/textures/block/kingdom_banner_cloth.png'
+          jar tf "$JAR" | grep -q 'assets/kingdomsclaims/textures/block/town_banner_cloth.png'
+          jar tf "$JAR" | grep -q 'assets/kingdomsclaims/models/block/kingdom_banner_segment_1.json'
+          jar tf "$JAR" | grep -q 'data/kingdomsclaims/recipes/town_banner.json'
+      - name: Upload compiled JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: kingdomsclaims-v0.2.5-forge-1.20.1
+          path: kingdoms-claims-forge/build/libs/kingdomsclaims-0.2.5.jar
+          if-no-files-found: error
