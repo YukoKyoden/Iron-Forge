@@ -1,0 +1,47 @@
+name: Build Kingdoms Claims v0.3.3 Cartographer
+on:
+  push:
+    branches: [kingdoms-claims-v033]
+    paths:
+      - ci/kingdomsclaims-v033.tar.xz.base64
+      - .github/workflows/build-kingdomsclaims-v033.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.8'
+      - name: Extract project and validate strategic map
+        run: |
+          base64 -d ci/kingdomsclaims-v033.tar.xz.base64 | tar -xJf -
+          python3 kingdoms-claims-forge/tests/source_checks.py
+      - name: Compile Forge 1.20.1 mod
+        working-directory: kingdoms-claims-forge
+        run: gradle --no-daemon --stacktrace clean build
+      - name: Validate true Cartographer classes and mod JAR
+        run: |
+          JAR=kingdoms-claims-forge/build/libs/kingdomsclaims-0.3.3.jar
+          test -f "$JAR"
+          jar tf "$JAR" | grep -q 'META-INF/mods.toml'
+          jar tf "$JAR" | grep -q 'com/kingdomsclaims/WarMapClient.class'
+          jar tf "$JAR" | grep -q 'com/kingdomsclaims/WarMapNetwork.class'
+          jar tf "$JAR" | grep -q 'com/kingdomsclaims/WarMapData.class'
+          jar tf "$JAR" | grep -q 'com/kingdomsclaims/WarTableService.class'
+          jar tf "$JAR" | grep -q 'data/kingdomsclaims/recipes/war_table.json'
+          jar tf "$JAR" | grep -q 'assets/kingdomsclaims/textures/entity/uniform_royal.png'
+      - name: Upload installable JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: kingdomsclaims-v0.3.3-forge-1.20.1
+          path: kingdoms-claims-forge/build/libs/kingdomsclaims-0.3.3.jar
+          if-no-files-found: error
