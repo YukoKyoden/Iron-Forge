@@ -1,10 +1,10 @@
-name: Build Kingdoms and Claims v0.4.8
+name: Build Kingdoms and Claims v0.4.9
 on:
   push:
-    branches: [kingdoms-claims-v048-architect]
+    branches: [kingdoms-claims-v049-hologram]
     paths:
       - '.github/workflows/build.yml'
-      - 'kingdoms-claims-v048-source.b64.txt'
+      - 'kingdoms-claims-v049-source.b64.txt'
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,10 +23,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.8'
-      - name: Extract Kingdoms and Claims v0.4.8 project
+      - name: Extract Kingdoms and Claims v0.4.9 project
         run: |
           mkdir -p kc
-          base64 -d kingdoms-claims-v048-source.b64.txt > kc-src.tar.xz
+          base64 -d kingdoms-claims-v049-source.b64.txt > kc-src.tar.xz
           tar -xJf kc-src.tar.xz -C kc
           test -f kc/kingdoms-claims-forge/build.gradle
       - name: Source consistency checks
@@ -39,13 +39,13 @@ jobs:
         run: |
           set -e
           find kc/kingdoms-claims-forge/build/libs -type f -name '*.jar' -print
-          modjar=$(find kc/kingdoms-claims-forge/build/libs -maxdepth 1 -name 'kingdomsclaims-0.4.8.jar' | head -n 1)
+          modjar=$(find kc/kingdoms-claims-forge/build/libs -maxdepth 1 -name 'kingdomsclaims-0.4.9.jar' | head -n 1)
           test -n "$modjar"
           jar tf "$modjar" | grep -q 'META-INF/mods.toml'
           jar tf "$modjar" | grep -q 'com/kingdomsclaims/'
       - name: Upload playable JAR
         uses: actions/upload-artifact@v4
         with:
-          name: KingdomsClaims-v0.4.8-Forge-1.20.1
-          path: kc/kingdoms-claims-forge/build/libs/kingdomsclaims-0.4.8.jar
+          name: KingdomsClaims-v0.4.9-Forge-1.20.1
+          path: kc/kingdoms-claims-forge/build/libs/kingdomsclaims-0.4.9.jar
           if-no-files-found: error
