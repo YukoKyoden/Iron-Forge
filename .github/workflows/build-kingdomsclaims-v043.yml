@@ -1,0 +1,38 @@
+name: Build Kingdoms Claims v0.4.3 3D Kingdom Planner
+on:
+  push:
+    branches: [kingdoms-claims-v043-planner]
+    paths:
+      - ci/kingdomsclaims-v043.tar.xz.base64
+      - .github/workflows/build-kingdomsclaims-v043.yml
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - uses: gradle/actions/setup-gradle@v4
+        with: {gradle-version: '8.8'}
+      - name: Extract and validate source
+        run: |
+          base64 -d ci/kingdomsclaims-v043.tar.xz.base64 | tar -xJf -
+          python3 kingdoms-claims-forge/tests/source_checks.py
+      - name: Compile Forge 1.20.1
+        working-directory: kingdoms-claims-forge
+        run: gradle --no-daemon --stacktrace clean build
+      - name: Validate installable JAR and planner classes
+        run: |
+          JAR=kingdoms-claims-forge/build/libs/kingdomsclaims-0.4.3.jar
+          test -f "$JAR"
+          jar tf "$JAR" | grep -q 'META-INF/mods.toml'
+          for cl in KingdomOverviewClient DistrictClient DistrictNetwork WarMapClient WarMapNetwork PlayerBuildData; do jar tf "$JAR" | grep -q "com/kingdomsclaims/${cl}.class"; done
+          jar tf "$JAR" | grep -q 'data/kingdomsclaims/recipes/kingdom_manager.json'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kingdomsclaims-v0.4.3-3d-planner-forge-1.20.1
+          path: kingdoms-claims-forge/build/libs/kingdomsclaims-0.4.3.jar
+          if-no-files-found: error
