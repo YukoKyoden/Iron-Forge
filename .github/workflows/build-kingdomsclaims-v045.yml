@@ -1,0 +1,39 @@
+name: Build Kingdoms Claims v0.4.5 Stable Planner Camera
+on:
+  push:
+    branches: [kingdoms-claims-v045-stable-camera]
+    paths:
+      - ci/kingdomsclaims-v045.tar.xz.base64
+      - .github/workflows/build-kingdomsclaims-v045.yml
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - uses: gradle/actions/setup-gradle@v4
+        with: {gradle-version: '8.8'}
+      - name: Extract and validate camera regression checks
+        run: |
+          base64 -d ci/kingdomsclaims-v045.tar.xz.base64 | tar -xJf -
+          python3 kingdoms-claims-forge/tests/source_checks.py
+      - name: Forge Java 17 compile
+        working-directory: kingdoms-claims-forge
+        run: gradle --no-daemon --stacktrace clean build
+      - name: Verify release JAR
+        run: |
+          JAR=kingdoms-claims-forge/build/libs/kingdomsclaims-0.4.5.jar
+          test -f "$JAR"
+          jar tf "$JAR" | grep -q 'META-INF/mods.toml'
+          for cl in 'KingdomOverviewClient' 'KingdomOverviewClient$PlannerHandHook' 'KingdomOverviewClient$OverviewScreen' 'DistrictClient' 'WarMapClient'; do
+            jar tf "$JAR" | grep -Fq "com/kingdomsclaims/${cl}.class"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kingdomsclaims-v0.4.5-stable-planner-forge-1.20.1
+          path: kingdoms-claims-forge/build/libs/kingdomsclaims-0.4.5.jar
+          if-no-files-found: error
