@@ -29,6 +29,8 @@ import org.lwjgl.glfw.GLFW;
 public final class WorldSelectionClient {
     private WorldSelectionClient() {}
     private static boolean active=false;
+    private static boolean registering=false;
+    public static void registerBuilding(){activate();registering=true;}
     private static BlockPos first, hover, second;
     private static int topLift=0;
     private static String status="";
@@ -39,12 +41,12 @@ public final class WorldSelectionClient {
 
     public static void activate(){
         Minecraft mc=Minecraft.getInstance();if(mc.player==null||mc.level==null)return;
-        active=true;first=null;second=null;hover=null;topLift=0;waiting=false;lastSaveName="";
+        registering=false;active=true;first=null;second=null;hover=null;topLift=0;waiting=false;lastSaveName="";
         status="Look at the first corner and left-click.";
         if(mc.screen!=null)mc.setScreen(null);
         mc.player.displayClientMessage(Component.literal("[Architect] Visual selection: click first corner, aim second, click again. Shift+wheel adjusts height. R restarts; Esc cancels."),false);
     }
-    private static void stop(){active=false;first=null;second=null;hover=null;waiting=false;topLift=0;status="";}
+    public static void stop(){active=false;first=null;second=null;hover=null;waiting=false;topLift=0;status="";}
     public static void outcome(BlueprintNetwork.SelectionOutcome reply){
         Minecraft mc=Minecraft.getInstance();waiting=false;status=reply.message();
         if(mc.player!=null)mc.player.displayClientMessage(Component.literal("[Architect] "+reply.message()),false);
@@ -64,8 +66,7 @@ public final class WorldSelectionClient {
         long w=Math.abs((long)first.getX()-b.getX())+1;
         long h=Math.abs((long)first.getY()-b.getY())+1;
         long d=Math.abs((long)first.getZ()-b.getZ())+1;
-        return w<=BlueprintData.MAX_WIDTH&&h<=BlueprintData.MAX_HEIGHT&&d<=BlueprintData.MAX_DEPTH
-            &&w*h*d<=BlueprintData.MAX_VOLUME;
+        return registering?w<=64&&h<=64&&d<=64&&w*h*d<=32768:w<=BlueprintData.MAX_WIDTH&&h<=BlueprintData.MAX_HEIGHT&&d<=BlueprintData.MAX_DEPTH&&w*h*d<=BlueprintData.MAX_VOLUME;
     }
     private static String metrics(){
         BlockPos b=opposite();if(first==null||b==null)return "Aim at a building block.";
@@ -79,7 +80,7 @@ public final class WorldSelectionClient {
         Minecraft mc=Minecraft.getInstance();if(mc.player==null||mc.level==null){stop();return;}
         // Escape is handled by Minecraft before some Forge key listeners run.
         // Cancel on the next tick whenever a different screen opens (Pause, Inventory, Chat).
-        if(mc.screen!=null){if(!(mc.screen instanceof SaveScreen))stop();return;}
+        if(mc.screen!=null){if(!(mc.screen instanceof SaveScreen)&&!(mc.screen instanceof BuildingClient.RegisterScreen))stop();return;}
         HitResult aimed=mc.player.pick(SELECT_REACH,1.0f,false);
         if(aimed instanceof BlockHitResult hit && aimed.getType()==HitResult.Type.BLOCK)
             hover=hit.getBlockPos();
@@ -96,7 +97,7 @@ public final class WorldSelectionClient {
         if(first==null){first=hover;second=null;topLift=0;status="Move to the opposite corner; click to confirm the highlighted selection.";return;}
         if(!withinLimit()){status="Red selection exceeds 20 per side or 4096 total blocks. Move closer or shrink it.";return;}
         second=hover;
-        Minecraft.getInstance().setScreen(new SaveScreen());
+        if(registering)Minecraft.getInstance().setScreen(new BuildingClient.RegisterScreen(first,opposite()));else Minecraft.getInstance().setScreen(new SaveScreen());
     }
     @SubscribeEvent public static void key(InputEvent.Key event){
         if(!active||Minecraft.getInstance().screen!=null||event.getAction()!=GLFW.GLFW_PRESS)return;
@@ -105,7 +106,7 @@ public final class WorldSelectionClient {
     }
     @SubscribeEvent public static void scroll(InputEvent.MouseScrollingEvent event){
         Minecraft mc=Minecraft.getInstance();if(!active||mc.screen!=null||first==null||mc.player==null||!mc.player.isShiftKeyDown())return;
-        topLift=Math.max(-19,Math.min(19,topLift+(event.getScrollDelta()>0?1:-1)));
+        topLift=Math.max(registering?-63:-19,Math.min(registering?63:19,topLift+(event.getScrollDelta()>0?1:-1)));
         status="Adjusting vertical corner: "+topLift;event.setCanceled(true);
     }
     @SubscribeEvent public static void worldRender(RenderLevelStageEvent event){
@@ -145,7 +146,7 @@ public final class WorldSelectionClient {
         GuiGraphics g=event.getGuiGraphics();int cx=mc.getWindow().getGuiScaledWidth()/2,y=mc.getWindow().getGuiScaledHeight()-94;
         g.fill(cx-175,y-12,cx+175,y+43,0xE71A2930);
         g.fill(cx-175,y-12,cx+175,y-10,0xFFE8C57C);
-        g.drawCenteredString(mc.font,"HOUSE SELECTION  /  "+(first==null?"FIRST CORNER":"SECOND CORNER"),cx,y-6,0xFFE8C57C);
+        g.drawCenteredString(mc.font,(registering?"REGISTER BUILDING  /  ":"BLUEPRINT SELECTION  /  ")+(first==null?"FIRST CORNER":"SECOND CORNER"),cx,y-6,0xFFE8C57C);
         g.drawCenteredString(mc.font,first==null?"Look at first block • Left click to start":metrics(),cx,y+7,first==null||withinLimit()?0xFF98EACC:0xFFFF9B89);
         g.drawCenteredString(mc.font,"Left click confirm  •  Shift+wheel height  •  R restart  •  Esc cancel",cx,y+20,0xFFDFE6E4);
         g.drawCenteredString(mc.font,mc.font.plainSubstrByWidth(status,340),cx,y+32,0xFFFFDDA3);

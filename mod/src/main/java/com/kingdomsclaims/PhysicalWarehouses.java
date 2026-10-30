@@ -25,7 +25,7 @@ public final class PhysicalWarehouses {
     private static boolean module(ServerLevel level,BlockPos p){return level.hasChunkAt(p)&&level.getBlockState(p).is(KingdomsClaims.STORAGE_EXPANSION.get());}
     private static boolean within(BlockPos a,BlockPos b,int distanceSq){return a.distSqr(b)<=distanceSq;}
     private static boolean factionMatches(ServerLevel w,BlockPos p,UUID faction){
-        var f=BarracksService.faction(w,p);return f!=null&&f.id().equals(faction);
+        var f=BarracksService.faction(w,p);return f!=null&&SharedStockpile.owner(w.getServer(),f.id()).equals(SharedStockpile.owner(w.getServer(),faction));
     }
     /** One-time, adjacent-only adoption of old v0.4.19/20 expansions. Never loads chunks. */
     private static void migrateOld(ServerLevel w,BlockPos origin,WarehouseData.Depot d){
@@ -116,26 +116,40 @@ public final class PhysicalWarehouses {
         return false;
     }
     private static int capacity(int count){return (count+1)*WarehouseData.SLOTS_PER_BLOCK*WarehouseData.ITEMS_PER_SLOT;}
+    public static int sharedCapacity(net.minecraft.server.MinecraftServer server,UUID faction){
+        UUID owner=SharedStockpile.owner(server,faction);long capacity=1024;
+        for(ServerLevel level:server.getAllLevels())for(var entry:WarehouseData.get(level).depots.entrySet()){
+            BlockPos pos=BlockPos.of(entry.getKey());var d=entry.getValue();
+            if(!owner.equals(SharedStockpile.owner(server,d.faction)))continue;
+            // No forced chunk loads; capacity from unloaded cores is suspended until loaded.
+            if(!core(level,pos)||!factionMatches(level,pos,d.faction))continue;
+            int shelves=0;for(long id:d.shelves){BlockPos p=BlockPos.of(id);if(module(level,p)&&factionMatches(level,p,d.faction))shelves++;}
+            capacity+=(long)(shelves+1)*576;
+        }
+        capacity+=RegisteredBuildings.get(server).warehouseCapacity(server,owner);
+        return (int)Math.min(2_000_000_000L,capacity);
+    }
+    private static SharedStockpile stock(ServerLevel level){return SharedStockpile.get(level.getServer());}
+
     public static int capacity(ServerLevel w,BlockPos pos){return capacity(modules(w,pos,null).size());}
     private static WarehouseData.Depot data(ServerLevel w,BlockPos pos,UUID faction){
         if(!core(w,pos))return null;
-        var owner=BarracksService.faction(w,pos);if(owner==null||!owner.id().equals(faction))return null;
+        var owner=BarracksService.faction(w,pos);if(owner==null||!SharedStockpile.owner(w.getServer(),owner.id()).equals(SharedStockpile.owner(w.getServer(),faction)))return null;
         WarehouseData.Depot d=WarehouseData.get(w).ensure(pos,faction);
         if(d!=null)migrateOld(w,pos,d);
         return d;
     }
     public record InventoryView(int[] stock,int[] carried,int capacity,int used,int modules){}
     public static InventoryView view(ServerPlayer p,BlockPos pos,UUID faction){
-        WarehouseData.Depot depot=data(p.serverLevel(),pos,faction);
-        int[] stock=new int[OperationsData.GOODS.length],carried=new int[stock.length];
-        if(depot!=null)importLegacy(p.serverLevel(),pos,depot);
-        for(int i=0;i<stock.length;i++){
-            stock[i]=depot==null?0:depot.count(OperationsData.GOODS[i]);
+        int[] totals=new int[OperationsData.GOODS.length],carried=new int[totals.length];
+        for(int i=0;i<totals.length;i++){
+            totals[i]=stock(p.serverLevel()).amount(faction,OperationsData.GOODS[i]);
             carried[i]=EconomyService.carried(p,OperationsData.GOODS[i]);
         }
-        int count=modules(p.serverLevel(),pos,null).size();return new InventoryView(stock,carried,capacity(count),depot==null?0:depot.total(),count);
+        return new InventoryView(totals,carried,sharedCapacity(p.getServer(),faction),stock(p.serverLevel()).used(faction),modules(p.serverLevel(),pos,null).size());
     }
-    /** Nearby storage only: no forced chunk loads or global resource pooling. */
+
+        /** Nearby storage only: no forced chunk loads or global resource pooling. */
     public static BlockPos nearest(ServerLevel w,UUID faction,BlockPos target,int maxDistance){
         BlockPos found=null;double best=(double)maxDistance*maxDistance;
         for(var e:WarehouseData.get(w).depots.entrySet()){
@@ -149,37 +163,21 @@ public final class PhysicalWarehouses {
     }
     /** Available stock is local to one loaded warehouse: no shared magic treasury. */
     public static int localStock(ServerLevel w,UUID faction,BlockPos at,int radius,String good){
-        BlockPos pos=nearest(w,faction,at,radius);
-        WarehouseData.Depot d=pos==null?null:data(w,pos,faction);
-        if(d!=null)importLegacy(w,pos,d);
-        return d==null?0:d.count(good);
+        return stock(w).amount(faction,good);
     }
-    /** Material bundles are checked and deducted together on the server thread. */
     public static boolean payLocal(ServerLevel w,UUID faction,BlockPos at,int radius,Map<String,Integer> needed){
-        BlockPos pos=nearest(w,faction,at,radius);
-        WarehouseData.Depot d=pos==null?null:data(w,pos,faction);
-        if(d==null)return needed.values().stream().allMatch(v->v<=0);
-        importLegacy(w,pos,d);
-        for(var e:needed.entrySet())if(e.getValue()<0||d.count(e.getKey())<e.getValue())return false;
-        boolean changed=false;
-        for(var e:needed.entrySet())if(e.getValue()>0){d.goods.put(e.getKey(),d.count(e.getKey())-e.getValue());changed=true;}
-        if(changed){WarehouseData.get(w).setDirty();drawFill(w,pos,d,null);}
-        return true;
+        return stock(w).pay(faction,needed);
     }
     public static boolean canPayLocal(ServerLevel w,UUID faction,BlockPos at,int radius,Map<String,Integer> needed){
-        BlockPos pos=nearest(w,faction,at,radius);
-        WarehouseData.Depot d=pos==null?null:data(w,pos,faction);
-        if(d==null)return needed.values().stream().allMatch(v->v<=0);
-        importLegacy(w,pos,d);
-        for(var e:needed.entrySet())if(e.getValue()<0||d.count(e.getKey())<e.getValue())return false;
-        return true;
+        return stock(w).canPay(faction,needed);
     }
-    /** Pick one loaded, sufficiently stocked warehouse near the banner.
+
+        /** Pick one loaded, sufficiently stocked warehouse near the banner.
      * The old nearest-only choice ignored a stocked warehouse just a few blocks farther away. */
     private static BlockPos stockedHeadquartersCore(ServerLevel w,UUID faction,BlockPos banner,Map<String,Integer> costs){
         BlockPos best=null;double bestDist=192.0*192.0;
         for(var e:WarehouseData.get(w).depots.entrySet()){
-            if(!faction.equals(e.getValue().faction))continue;
+            if(!SharedStockpile.owner(w.getServer(),faction).equals(SharedStockpile.owner(w.getServer(),e.getValue().faction)))continue;
             BlockPos pos=BlockPos.of(e.getKey());
             double dx=(double)pos.getX()-banner.getX(),dz=(double)pos.getZ()-banner.getZ();
             double distance=dx*dx+dz*dz;
@@ -211,177 +209,67 @@ public final class PhysicalWarehouses {
         return level==null?null:new Headquarters(level,banner.pos);
     }
     public static boolean payHeadquarters(net.minecraft.server.MinecraftServer server,UUID faction,Map<String,Integer> costs){
-        Headquarters h=headquarters(server,faction);
-        if(h==null)return false;
-        BlockPos stocked=stockedHeadquartersCore(h.world(),faction,h.banner(),costs);
-        return stocked!=null&&payLocal(h.world(),faction,stocked,0,costs);
+        return SharedStockpile.get(server).pay(faction,costs);
     }
     public static boolean canPayHeadquarters(net.minecraft.server.MinecraftServer server,UUID faction,Map<String,Integer> costs){
-        Headquarters h=headquarters(server,faction);
-        return h!=null&&stockedHeadquartersCore(h.world(),faction,h.banner(),costs)!=null;
+        return SharedStockpile.get(server).canPay(faction,costs);
     }
-    /** Gold is stored as physical ingots and nuggets; one ingot equals nine nuggets.
-     * Materials and gold payroll must be in the SAME nearby warehouse. */
-    private static BlockPos upkeepCore(net.minecraft.server.MinecraftServer server,UUID faction,Map<String,Integer> goods,int wageNuggets){
-        Headquarters h=headquarters(server,faction);
-        if(h==null||wageNuggets<0)return null;
-        ServerLevel w=h.world();BlockPos found=null;double best=192.0*192.0;
-        for(var e:WarehouseData.get(w).depots.entrySet()){
-            if(!faction.equals(e.getValue().faction))continue;
-            BlockPos p=BlockPos.of(e.getKey());
-            double dx=p.getX()-h.banner().getX(),dz=p.getZ()-h.banner().getZ(),sq=dx*dx+dz*dz;
-            if(sq>best||!core(w,p))continue;
-            WarehouseData.Depot d=data(w,p,faction);if(d==null)continue;
-            importLegacy(w,p,d);
-            boolean enough=true;
-            for(var cost:goods.entrySet())if(cost.getValue()<0||d.count(cost.getKey())<cost.getValue()){enough=false;break;}
-            if(!enough)continue;
-            long available=9L*d.count("GOLD")+d.count("GOLD_NUGGETS");
-            if(available<wageNuggets)continue;
-            int spentNuggets=Math.min(wageNuggets,d.count("GOLD_NUGGETS"));
-            int spentIngots=(wageNuggets-spentNuggets+8)/9;
-            int change=spentIngots*9-(wageNuggets-spentNuggets);
-            int futureUsed=d.total()-spentNuggets-spentIngots+change;
-            for(var cost:goods.entrySet())futureUsed-=cost.getValue();
-            if(futureUsed>capacity(w,p))continue; // no item overflow when making change
-            best=sq;found=p;
-        }
-        return found;
-    }
+    /** A gold ingot equals nine nuggets; all resource payments are settled against one kingdom balance. */
     public static boolean canPayUpkeep(net.minecraft.server.MinecraftServer server,UUID faction,Map<String,Integer> goods,int wageNuggets){
-        return upkeepCore(server,faction,goods,wageNuggets)!=null;
+        if(wageNuggets<0)return false;
+        SharedStockpile s=SharedStockpile.get(server);
+        if(!s.canPay(faction,goods)||9L*s.amount(faction,"GOLD")+s.amount(faction,"GOLD_NUGGETS")<wageNuggets)return false;
+        var payroll=StockpileMath.goldPayment(s.amount(faction,"GOLD"),s.amount(faction,"GOLD_NUGGETS"),wageNuggets);
+        if(payroll==null)return false;int nuggets=payroll.get("GOLD_NUGGETS"),ingots=payroll.get("GOLD"),change=payroll.get("CHANGE");
+        long after=(long)s.used(faction)-nuggets-ingots+change;
+        for(int cost:goods.values())after-=cost;
+        return after<=sharedCapacity(server,faction);
     }
     public static boolean payUpkeep(net.minecraft.server.MinecraftServer server,UUID faction,Map<String,Integer> goods,int wageNuggets){
-        BlockPos p=upkeepCore(server,faction,goods,wageNuggets);
-        if(p==null)return false;
-        Headquarters h=headquarters(server,faction);
-        if(h==null)return false;
-        WarehouseData.Depot d=data(h.world(),p,faction);
-        if(d==null)return false;
-        int takeNuggets=Math.min(wageNuggets,d.count("GOLD_NUGGETS"));
-        int takeIngots=(wageNuggets-takeNuggets+8)/9;
-        int change=takeIngots*9-(wageNuggets-takeNuggets);
-        for(var cost:goods.entrySet())if(cost.getValue()>0)d.goods.put(cost.getKey(),d.count(cost.getKey())-cost.getValue());
-        d.goods.put("GOLD",d.count("GOLD")-takeIngots);
-        d.goods.put("GOLD_NUGGETS",d.count("GOLD_NUGGETS")-takeNuggets+change);
-        WarehouseData.get(h.world()).setDirty();drawFill(h.world(),p,d,null);
+        if(!canPayUpkeep(server,faction,goods,wageNuggets))return false;
+        SharedStockpile s=SharedStockpile.get(server);
+        var payroll=StockpileMath.goldPayment(s.amount(faction,"GOLD"),s.amount(faction,"GOLD_NUGGETS"),wageNuggets);
+        if(payroll==null)return false;int nuggets=payroll.get("GOLD_NUGGETS"),ingots=payroll.get("GOLD"),change=payroll.get("CHANGE");
+        Map<String,Integer> payment=new HashMap<>(goods);payment.merge("GOLD",ingots,Integer::sum);payment.merge("GOLD_NUGGETS",nuggets,Integer::sum);
+        if(!s.pay(faction,payment))return false;
+        if(change>0)s.add(faction,"GOLD_NUGGETS",change,Integer.MAX_VALUE);
         return true;
     }
+
     /** Read only loaded warehouse cores, bounded by the player's actual built warehouses. */
     public static int factionStock(net.minecraft.server.MinecraftServer server,UUID faction,String good){
-        long total=0;
-        for(ServerLevel world:server.getAllLevels())for(var e:WarehouseData.get(world).depots.entrySet())
-            if(e.getValue().faction.equals(faction)&&core(world,BlockPos.of(e.getKey())))total+=e.getValue().count(good);
-        return (int)Math.min(Integer.MAX_VALUE,total);
+        return SharedStockpile.get(server).amount(faction,good);
     }
-    /** Preserve old NBT balances and migrate in small, capacity-bounded portions. Never duplicate. */
-    private static void importLegacy(ServerLevel w,BlockPos pos,WarehouseData.Depot d){
-        int free=Math.max(0,capacity(w,pos)-d.total());if(free==0)return;
-        boolean changed=false;
-        KingdomData land=KingdomData.get(w.getServer());OperationsData old=OperationsData.get(w.getServer());
-        for(String good:OperationsData.GOODS){
-            if(free<=0)break;
-            int carried=old.warehouse(d.faction,good);
-            int move=Math.min(free,carried);
-            if(move>0&&old.debit(d.faction,good,move)){
-                d.goods.merge(good,move,Integer::sum);free-=move;changed=true;WarehouseData.get(w).setDirty();
-            }
-            if(!good.equals("IRON")&&!good.equals("WHEAT")||free<=0)continue;
-            var kingdom=land.kingdoms.get(d.faction);var town=land.towns.get(d.faction);
-            long stored=kingdom!=null?(good.equals("IRON")?kingdom.treasuryIron:kingdom.treasuryWheat):
-                town!=null?(good.equals("IRON")?town.treasuryIron:town.treasuryWheat):0;
-            int amount=(int)Math.min(free,Math.max(0,stored));
-            if(amount>0){
-                if(kingdom!=null){if(good.equals("IRON"))kingdom.treasuryIron-=amount;else kingdom.treasuryWheat-=amount;}
-                else if(town!=null){if(good.equals("IRON"))town.treasuryIron-=amount;else town.treasuryWheat-=amount;}
-                d.goods.merge(good,amount,Integer::sum);free-=amount;changed=true;
-                land.setDirty();WarehouseData.get(w).setDirty();
-            }
-        }
-        // The last virtual money is one-way migrated into REAL Minecraft gold items.
-        // Exactly 9 old Crowns become one ingot; remaining Crowns become nuggets.
-        DistrictData districts=DistrictData.get(w.getServer());
-        DistrictData.Civics civics=districts.city(d.faction);
-        long remainingCrowns=civics.crowns;
-        long oldPending=civics.pendingTaxNuggets;
-        long usable=Math.min(2_000_000_000L,remainingCrowns+oldPending);
-        // Prefer older Crown balances first so that nothing can be spent twice.
-        int ingots=(int)Math.min((long)free,usable/9);
-        if(ingots>0){
-            long value=9L*ingots;
-            long fromCrowns=Math.min(remainingCrowns,value);
-            remainingCrowns-=fromCrowns;oldPending-=value-fromCrowns;
-            d.goods.merge("GOLD",ingots,Integer::sum);
-            free-=ingots;changed=true;
-        }
-        // Transfer only whole nuggets after ingot packing; no lost fractional Crowns.
-        int nuggets=(int)Math.min((long)free,Math.min(8L,remainingCrowns+oldPending));
-        if(nuggets>0){
-            long fromCrowns=Math.min(remainingCrowns,nuggets);
-            remainingCrowns-=fromCrowns;oldPending-=nuggets-fromCrowns;
-            d.goods.merge("GOLD_NUGGETS",nuggets,Integer::sum);
-            changed=true;
-        }
-        if(remainingCrowns!=civics.crowns||oldPending!=civics.pendingTaxNuggets){
-            civics.crowns=remainingCrowns;civics.pendingTaxNuggets=oldPending;
-            districts.setDirty();WarehouseData.get(w).setDirty();
-        }
-        if(changed)drawFill(w,pos,d,null);
-    }
-    /** Migrate pending real gold tax rewards and old currency near this settlement's banner. */
-    public static void importHeadquartersGold(net.minecraft.server.MinecraftServer server,UUID faction){
-        Headquarters h=headquarters(server,faction);
-        if(h==null)return;
-        BlockPos warehouse=nearest(h.world(),faction,h.banner(),192);
-        if(warehouse!=null){WarehouseData.Depot d=data(h.world(),warehouse,faction);if(d!=null)importLegacy(h.world(),warehouse,d);}
-    }
-    public static void importAvailable(ServerLevel w,UUID faction,BlockPos pos){
-        WarehouseData.Depot d=data(w,pos,faction);if(d!=null)importLegacy(w,pos,d);
-    }
-    public static void importAll(net.minecraft.server.MinecraftServer server){
-        for(ServerLevel world:server.getAllLevels())for(var e:new ArrayList<>(WarehouseData.get(world).depots.entrySet())){
-            BlockPos pos=BlockPos.of(e.getKey());if(core(world,pos))importLegacy(world,pos,e.getValue());
-        }
-    }
+
+        /** Preserve old NBT balances and migrate in small, capacity-bounded portions. Never duplicate. */
+    private static void importLegacy(ServerLevel w,BlockPos pos,WarehouseData.Depot d){}
+    public static void importHeadquartersGold(net.minecraft.server.MinecraftServer server,UUID faction){}
+    public static void importAvailable(ServerLevel w,UUID faction,BlockPos pos){}
+    public static void importAll(net.minecraft.server.MinecraftServer server){}
     /** Physical inventory transaction at the operating site (e.g. War Table). */
     public static int storeFromPlayer(ServerPlayer player,UUID faction,BlockPos near,String good,int amount){
         Item item=EconomyService.goodsItem(good);if(item==null||amount<=0)return 0;
+        // Physical deposits must be made at a genuine warehouse core.
         BlockPos pos=nearest(player.serverLevel(),faction,near,96);
-        WarehouseData.Depot d=pos==null?null:data(player.serverLevel(),pos,faction);
-        if(d==null)return 0;importLegacy(player.serverLevel(),pos,d);
-        int moved=Math.min(amount,Math.min(EconomyService.carried(player,good),Math.max(0,capacity(player.serverLevel(),pos)-d.total())));
-        if(moved<=0)return 0;
-        int left=moved;
-        for(ItemStack stack:player.getInventory().items)if(stack.is(item)&&left>0){int take=Math.min(left,stack.getCount());stack.shrink(take);left-=take;}
-        player.getInventory().setChanged();d.goods.merge(good,moved,Integer::sum);
-        WarehouseData.get(player.serverLevel()).setDirty();drawFill(player.serverLevel(),pos,d,null);
-        return moved;
+        if(pos==null)return 0;
+        int available=EconomyService.carried(player,good);
+        int accepted=stock(player.serverLevel()).add(faction,good,Math.min(amount,available),sharedCapacity(player.getServer(),faction));
+        if(accepted<=0)return 0;
+        int left=accepted;
+        for(ItemStack stack:player.getInventory().items)if(stack.is(item)&&left>0){int n=Math.min(left,stack.getCount());stack.shrink(n);left-=n;}
+        player.getInventory().setChanged();return accepted;
     }
     public static int takeToPlayer(ServerPlayer player,UUID faction,BlockPos near,String good,int amount){
         Item item=EconomyService.goodsItem(good);if(item==null||amount<=0)return 0;
-        BlockPos pos=nearest(player.serverLevel(),faction,near,96);
-        WarehouseData.Depot d=pos==null?null:data(player.serverLevel(),pos,faction);
-        if(d==null)return 0;importLegacy(player.serverLevel(),pos,d);
-        int take=Math.min(amount,Math.min(d.count(good),playerRoom(player.getInventory(),item)));
-        if(take<=0)return 0;
-        d.goods.put(good,d.count(good)-take);WarehouseData.get(player.serverLevel()).setDirty();
-        give(player.getInventory(),item,take);drawFill(player.serverLevel(),pos,d,null);
-        return take;
+        if(nearest(player.serverLevel(),faction,near,96)==null)return 0;
+        int n=Math.min(amount,Math.min(stock(player.serverLevel()).amount(faction,good),playerRoom(player.getInventory(),item)));
+        if(n<=0||!stock(player.serverLevel()).pay(faction,Map.of(good,n)))return 0;
+        give(player.getInventory(),item,n);return n;
     }
-    public static int put(ServerLevel world,UUID faction,BlockPos pos,String good,int amount){return deliver(world,faction,pos,good,amount);}
+
+        public static int put(ServerLevel world,UUID faction,BlockPos pos,String good,int amount){return deliver(world,faction,pos,good,amount);}
     /** Site production: count active owned operations, no block scan and no entity renderer. */
-    public static int[] rates(ServerLevel world,UUID faction,BlockPos at){
-        int[] result=new int[OperationsData.GOODS.length];String dim=KingdomData.dim(world);
-        for(var site:OperationsData.get(world.getServer()).sites.values()){
-            if(!"OUTPOST".equals(site.stage)||!faction.equals(site.owner)||!dim.equals(site.dim))continue;
-            if((long)(site.x-at.getX())*(site.x-at.getX())+(long)(site.z-at.getZ())*(site.z-at.getZ())>192L*192)continue;
-            var army=MilitaryData.get(world.getServer()).armies.get(site.army);
-            if(army==null||army.marching||Math.hypot(army.locationX-site.x,army.locationZ-site.z)>=2.5)continue;
-            int amount=OperationsService.producedPerMinute(site.type);
-            for(int i=0;i<OperationsData.GOODS.length;i++)if(OperationsData.GOODS[i].equals(site.good()))result[i]+=amount;
-        }
-        return result;
-    }
+    public static int[] rates(ServerLevel world,UUID faction,BlockPos at){return RegisteredBuildings.get(world.getServer()).rates(world.getServer(),faction);}
     /** Convert only supported basic building blocks into physical material units.
      * Specialty items must still be carried: no phantom stocks or free item conversions. */
     public static String buildingGood(Item item){
@@ -396,49 +284,39 @@ public final class PhysicalWarehouses {
         if(name.equals("stone")||name.equals("cobblestone")||name.equals("smooth_stone")||name.equals("stone_bricks")||name.equals("mossy_stone_bricks")||name.equals("deepslate")||name.equals("cobbled_deepslate")||name.equals("polished_deepslate")||name.equals("andesite")||name.equals("diorite")||name.equals("granite")||name.equals("tuff")||name.endsWith("_stone_bricks"))return "STONE";
         return null;
     }
+    public static int materialUnits(Item item){
+        String n=net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item).getPath();
+        return Set.of("iron_block","gold_block","coal_block","emerald_block","hay_block").contains(n)?9:1;
+    }
     /** Atomic on the server thread: verify stock/inventory BEFORE withdrawing anything. */
     public static String payConstruction(ServerPlayer player,UUID faction,BlockPos anchor,Map<Item,Integer> costs){
-        BlockPos nearby=nearest(player.serverLevel(),faction,anchor,96);
-        WarehouseData.Depot depot=nearby==null?null:data(player.serverLevel(),nearby,faction);
-        if(depot!=null)importLegacy(player.serverLevel(),nearby,depot);
-        Map<Item,Integer> personal=new LinkedHashMap<>();Map<String,Integer> fromDepot=new HashMap<>();
+        SharedStockpile s=stock(player.serverLevel());Map<Item,Integer> personal=new LinkedHashMap<>();Map<String,Integer> shared=new HashMap<>();
         for(var entry:costs.entrySet()){
-            Item item=entry.getKey();int need=entry.getValue();String good=buildingGood(item);
-            int available=depot==null||good==null?0:Math.max(0,depot.count(good)-fromDepot.getOrDefault(good,0));
-            int warehouseTake=Math.min(need,available);
-            if(warehouseTake>0)fromDepot.merge(good,warehouseTake,Integer::sum);
-            int carried=need-warehouseTake;
-            if(carried>0)personal.merge(item,carried,Integer::sum);
+            String good=buildingGood(entry.getKey());int unit=materialUnits(entry.getKey());int required=Math.multiplyExact(entry.getValue(),unit);
+            int fromShared=good==null?0:required;
+            if(fromShared>0)shared.merge(good,fromShared,Integer::sum);
+            if(required>fromShared)personal.merge(entry.getKey(),(required-fromShared+unit-1)/unit,Integer::sum);
         }
         List<String> missing=new ArrayList<>();
-        for(var entry:personal.entrySet()){
-            int have=0;for(ItemStack stack:player.getInventory().items)if(stack.is(entry.getKey()))have+=stack.getCount();
-            if(have<entry.getValue())missing.add(entry.getKey().getDescription().getString()+" "+have+"/"+entry.getValue());
+        for(var e:personal.entrySet()){
+            int count=0;for(ItemStack stack:player.getInventory().items)if(stack.is(e.getKey()))count+=stack.getCount();
+            if(count<e.getValue())missing.add(e.getKey().getDescription().getString()+" "+count+"/"+e.getValue());
         }
-        if(!missing.isEmpty())return "Missing from local warehouse / inventory: "+String.join(", ",missing.subList(0,Math.min(4,missing.size())));
-        for(var entry:personal.entrySet()){
-            int left=entry.getValue();for(ItemStack stack:player.getInventory().items)if(stack.is(entry.getKey())&&left>0){int used=Math.min(left,stack.getCount());stack.shrink(used);left-=used;}
+        if(!missing.isEmpty())return "Missing: "+String.join(", ",missing.subList(0,Math.min(4,missing.size())));
+        if(!s.pay(faction,shared))return "Not enough kingdom resources for this design. See its material requirements.";
+        for(var e:personal.entrySet()){
+            int left=e.getValue();for(ItemStack stack:player.getInventory().items)if(stack.is(e.getKey())&&left>0){int used=Math.min(left,stack.getCount());stack.shrink(used);left-=used;}
         }
-        player.getInventory().setChanged();
-        if(depot!=null){
-            for(var entry:fromDepot.entrySet())depot.goods.put(entry.getKey(),depot.count(entry.getKey())-entry.getValue());
-            WarehouseData.get(player.serverLevel()).setDirty();drawFill(player.serverLevel(),nearby,depot,null);
-        }
-        return null;
+        player.getInventory().setChanged();return null;
     }
-    /** Return cargo to the closest loaded warehouse near its destination.
+
+        /** Return cargo to the closest loaded warehouse near its destination.
      * Partial deliveries retain remaining cargo; no fallback to an invisible ledger. */
     public static int deliver(ServerLevel w,UUID faction,BlockPos destination,String good,int requested){
-        if(faction==null||requested<=0)return 0;
-        BlockPos nearby=nearest(w,faction,destination,192);
-        WarehouseData.Depot depot=nearby==null?null:data(w,nearby,faction);
-        if(depot==null||EconomyService.goodsItem(good)==null)return 0;
-        importLegacy(w,nearby,depot);
-        int add=Math.min(requested,Math.max(0,capacity(w,nearby)-depot.total()));
-        if(add>0){depot.goods.merge(good,add,Integer::sum);WarehouseData.get(w).setDirty();drawFill(w,nearby,depot,null);}
-        return add;
+        return faction==null||requested<=0?0:stock(w).add(faction,good,requested,sharedCapacity(w.getServer(),faction));
     }
-    private static int playerRoom(Inventory inv,Item item){
+
+        private static int playerRoom(Inventory inv,Item item){
         int room=0;for(ItemStack s:inv.items){
             if(s.isEmpty())room+=item.getDefaultInstance().getMaxStackSize();
             else if(s.is(item))room+=Math.max(0,s.getMaxStackSize()-s.getCount());
@@ -453,7 +331,7 @@ public final class PhysicalWarehouses {
     }
     private static void drawFill(ServerLevel w,BlockPos pos,WarehouseData.Depot depot,BlockPos excluded){
         List<BlockPos> positions=modules(w,pos,excluded);
-        int n=depot.total(),per=WarehouseData.SLOTS_PER_BLOCK*WarehouseData.ITEMS_PER_SLOT;
+        int n=stock(w).used(depot.faction),per=WarehouseData.SLOTS_PER_BLOCK*WarehouseData.ITEMS_PER_SLOT;
         int remaining=Math.max(0,n-per); // Core handles first nine slots.
         for(BlockPos p:positions){
             int fill=Math.min(per,remaining);remaining=Math.max(0,remaining-per);
@@ -471,27 +349,19 @@ public final class PhysicalWarehouses {
     }
     /** Server-only, atomic with respect to other depot operations on the server thread. */
     public static String transfer(ServerPlayer p,BlockPos pos,UUID faction,String good,String action){
-        Item item=EconomyService.goodsItem(good);if(item==null)return "Unknown resource.";
-        WarehouseData.Depot d=data(p.serverLevel(),pos,faction);if(d==null)return "Warehouse no longer belongs to your settlement.";
-        Inventory inv=p.getInventory();int free=capacity(p.serverLevel(),pos)-d.total();
-        if("import".equals(action))return "Old stockpile imports are disabled. Use modular warehouse storage.";
+        if(data(p.serverLevel(),pos,faction)==null)return "This warehouse does not belong to your kingdom.";
         if("deposit".equals(action)){
-            int batch=Math.min(Math.min(64,free),EconomyService.carried(p,good));
-            if(batch<=0)return free<=0?"Warehouse full. Add shelves.":"No "+good.toLowerCase(Locale.ROOT)+" carried.";
-            int left=batch;for(ItemStack s:inv.items)if(s.is(item)&&left>0){int taken=Math.min(left,s.getCount());s.shrink(taken);left-=taken;}
-            if(left!=0)return "Inventory changed. Retry.";
-            inv.setChanged();d.goods.merge(good,batch,Integer::sum);WarehouseData.get(p.serverLevel()).setDirty();drawFill(p.serverLevel(),pos,d,null);
-            return "Stored "+batch+" "+good.toLowerCase(Locale.ROOT)+" here.";
+            int moved=storeFromPlayer(p,faction,pos,good,64);
+            return moved>0?"Deposited "+moved+" "+good.toLowerCase(Locale.ROOT)+".":"No items carried, or kingdom storage is full.";
         }
         if("withdraw".equals(action)){
-            int batch=Math.min(64,d.count(good));if(batch==0)return "No "+good.toLowerCase(Locale.ROOT)+" stored here.";
-            batch=Math.min(batch,playerRoom(inv,item));if(batch==0)return "Your inventory is full.";
-            d.goods.put(good,d.count(good)-batch);WarehouseData.get(p.serverLevel()).setDirty();give(inv,item,batch);drawFill(p.serverLevel(),pos,d,null);
-            return "Withdrew "+batch+" "+good.toLowerCase(Locale.ROOT)+" for transport.";
+            int moved=takeToPlayer(p,faction,pos,good,64);
+            return moved>0?"Withdrew "+moved+" "+good.toLowerCase(Locale.ROOT)+".":"Nothing available or inventory full.";
         }
-        return "Unknown storage action.";
+        return "Unknown action.";
     }
-    private static void feedback(BlockEvent.EntityPlaceEvent e,String msg){
+
+        private static void feedback(BlockEvent.EntityPlaceEvent e,String msg){
         if(e.getEntity() instanceof ServerPlayer player)player.sendSystemMessage(Component.literal("[Warehouse] "+msg));
     }
     /** Placement validation and graph updates run on events only, never on ticks. */
@@ -502,13 +372,13 @@ public final class PhysicalWarehouses {
         if(e.getPlacedBlock().is(KingdomsClaims.SUPPLY_DEPOT.get())){
             var faction=BarracksService.faction(w,pos);
             if(faction==null){e.setCanceled(true);feedback(e,"Place Warehouse Cores inside your claims.");return;}
-            if(coreTooNear(w,pos)){e.setCanceled(true);feedback(e,"Another Warehouse Core is within 128 blocks. Spread warehouses farther apart.");return;}
+
             WarehouseData.get(w).ensure(pos,faction.id());refresh(w,pos);
         }else if(e.getPlacedBlock().is(KingdomsClaims.STORAGE_EXPANSION.get())){
             var faction=BarracksService.faction(w,pos);
             if(faction==null){e.setCanceled(true);feedback(e,"Shelves must be inside a claimed territory.");return;}
             BlockPos origin=candidateCore(w,pos,faction.id());
-            if(origin==null){e.setCanceled(true);feedback(e,"Shelf must link within 10 blocks of the core or another linked shelf, within 50 blocks of its core (100 shelves maximum).");return;}
+            if(origin==null)return; // Standalone shelves can be counted by a registered warehouse.
             WarehouseData.Depot d=WarehouseData.get(w).at(origin);
             if(d==null||d.shelves.size()>=WarehouseData.MAX_MODULES){e.setCanceled(true);feedback(e,"Warehouse already has 100 shelves.");return;}
             d.shelves.add(pos.asLong());WarehouseData.get(w).setDirty();refresh(w,origin);
@@ -523,7 +393,7 @@ public final class PhysicalWarehouses {
             WarehouseData data=WarehouseData.get(w);WarehouseData.Depot d=data.at(pos);
             if(d!=null){
                 migrateOld(w,pos,d);
-                if(d.total()>0||!d.shelves.isEmpty()){
+                if(!d.shelves.isEmpty()){
                     e.setCanceled(true);e.getPlayer().displayClientMessage(Component.literal("[Warehouse] Empty this core and remove every connected shelf first."),true);return;
                 }
                 data.depots.remove(pos.asLong());data.setDirty();

@@ -26,9 +26,21 @@ public final class KingdomCommands {
     private static boolean valid(String name){return name.matches("[a-zA-Z0-9_-]{3,24}");}
     @SubscribeEvent public static void register(RegisterCommandsEvent e){
         CommandDispatcher<CommandSourceStack> d=e.getDispatcher();
+        d.register(Commands.literal("manager").executes(c->{ManagerNetwork.open(player(c),"");return 1;}));
         d.register(Commands.literal("planner").executes(c->{DistrictNetwork.openHere(player(c));return 1;}));
         d.register(Commands.literal("kingdom")
             .then(Commands.literal("planner").executes(c->{DistrictNetwork.openHere(player(c));return 1;}))
+            .then(Commands.literal("register")
+                .then(Commands.argument("type",StringArgumentType.word())
+                .then(Commands.argument("corner1",BlockPosArgument.blockPos())
+                .then(Commands.argument("corner2",BlockPosArgument.blockPos()).executes(c->{
+                    ServerPlayer p=player(c);
+                    var faction=BarracksService.faction(p.serverLevel(),p.blockPosition());
+                    if(faction==null)return err(c,"Stand inside your kingdom to register a building.");
+                    BlockPos a=BlockPosArgument.getLoadedBlockPos(c,"corner1"),b=BlockPosArgument.getLoadedBlockPos(c,"corner2");
+                    String result=RegisteredBuildings.get(p.server).register(p,a,b,StringArgumentType.getString(c,"type"));
+                    return result.startsWith("Registered ")?ok(c,result):err(c,result);
+                }))))
             .then(Commands.literal("help").executes(c->ok(c,"/kingdom create/list/info/members/invite/accept/decline/leave/kick/officer/member/transfer/rename/disband/claim/unclaim/here/grid/costs/expansion/banner/permit/treasury/annex | K = map")))
             .then(Commands.literal("create").then(Commands.argument("name",StringArgumentType.word()).executes(KingdomCommands::create)))
             .then(Commands.literal("list").executes(KingdomCommands::list))

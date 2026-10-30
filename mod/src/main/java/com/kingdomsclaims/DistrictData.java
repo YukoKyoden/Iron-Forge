@@ -23,7 +23,7 @@ public final class DistrictData extends SavedData {
     public final Map<UUID,Zone> zones=new LinkedHashMap<>();
     public final Map<UUID,Civics> civics=new HashMap<>();
     public static DistrictData get(MinecraftServer server){return server.overworld().getDataStorage().computeIfAbsent(DistrictData::load,DistrictData::new,"kingdomsclaims_districts");}
-    public Civics city(UUID id){return civics.computeIfAbsent(id,k->new Civics());}
+    public Civics city(UUID id){var server=net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();if(server!=null)id=SharedStockpile.owner(server,id);return civics.computeIfAbsent(id,k->new Civics());}
     public List<Zone> of(UUID owner,String dimension){List<Zone> list=new ArrayList<>();for(Zone z:zones.values())if(z.owner.equals(owner)&&z.dimension.equals(dimension))list.add(z);return list;}
     public Zone at(UUID owner,String dimension,int cx,int cz){long pos=ChunkPos.asLong(cx,cz);for(Zone z:zones.values())if(z.owner.equals(owner)&&z.dimension.equals(dimension)&&z.chunks.contains(pos))return z;return null;}
     public int capacity(UUID owner,int type){int amount=0;for(Zone z:zones.values())if(z.owner.equals(owner)&&z.type==type&&z.level>0){int factor=type==0?8:type==1?8:type==2?12:12;amount+=z.chunks.size()*z.level*factor;}return Math.min(1000000,amount);}
@@ -35,7 +35,8 @@ public final class DistrictData extends SavedData {
      * Tax nuggets are pending only while no warehouse has capacity; never usable for payroll until stored. */
     public boolean cycle(MinecraftServer server,UUID owner,boolean essentialsPaid){
         Civics c=city(owner);
-        int maxPopulation=BlueprintData.get(server).housing(owner);
+        int maxPopulation=RegisteredBuildings.get(server).housing(server,owner);
+        c.population=Math.min(c.population,maxPopulation);
         if(essentialsPaid&&c.population<maxPopulation)c.population=Math.min(maxPopulation,c.population+Math.max(1,maxPopulation/12));
         else if(!essentialsPaid&&c.population>0)c.population=Math.max(0,c.population-Math.max(1,c.population/12));
         int earned=essentialsPaid?estimatedTaxes(owner):0;
@@ -46,7 +47,10 @@ public final class DistrictData extends SavedData {
         if(essentialsPaid)c.paidCycles++;else c.missedCycles++;
         c.happiness=Math.max(15,Math.min(95,90-Math.max(0,c.tax-10)*3+(essentialsPaid?0:-25)));
         setDirty();
-        if(essentialsPaid)PhysicalWarehouses.importHeadquartersGold(server,owner);
+        if(essentialsPaid&&c.pendingTaxNuggets>0){
+            int accepted=SharedStockpile.get(server).add(owner,"GOLD_NUGGETS",(int)Math.min(Integer.MAX_VALUE,c.pendingTaxNuggets),PhysicalWarehouses.sharedCapacity(server,owner));
+            if(accepted>0){c.pendingTaxNuggets-=accepted;setDirty();}
+        }
         return essentialsPaid;
     }
     public static DistrictData load(CompoundTag root){

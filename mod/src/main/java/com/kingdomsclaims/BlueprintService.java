@@ -41,6 +41,7 @@ public final class BlueprintService {
     private static boolean canBuildFaction(ServerPlayer p,BarracksService.Faction f){
         KingdomData data=KingdomData.get(p.getServer());
         KingdomData.Kingdom k=data.kingdoms.get(f.id());KingdomData.Town t=data.towns.get(f.id());
+        if(t!=null&&t.parentKingdom!=null){var parent=data.kingdoms.get(t.parentKingdom);if(parent!=null&&parent.allowed(p.getUUID(),KingdomData.BUILD))return true;}
         return k!=null&&k.allowed(p.getUUID(),KingdomData.BUILD)||t!=null&&t.allowed(p.getUUID(),KingdomData.BUILD);
     }
     /** Permissions are checked on every covered chunk, not only the target anchor. */
@@ -131,7 +132,7 @@ public final class BlueprintService {
         }
         return null;
     }
-    private static Map<Item,Integer> requirements(BlueprintData.Plan plan){
+    public static Map<Item,Integer> requirements(BlueprintData.Plan plan){
         Map<Item,Integer> cost=new LinkedHashMap<>();
         for(BlueprintData.Piece piece:plan.blocks){
             BlockState state=NbtUtils.readBlockState(BuiltInRegistries.BLOCK.asLookup(),piece.state);
@@ -179,7 +180,7 @@ public final class BlueprintService {
         }
         BlueprintData.Site site=new BlueprintData.Site(UUID.randomUUID(),plan,player.getUUID(),plan.dimension,anchor,turns);
         data.sites.put(site.id,site);data.setDirty();
-        return yes("Construction started: "+plan.name+" ("+plan.blocks.size()+" blocks, "+site.secondsRemaining+" seconds). Materials paid from local warehouse and carried items.");
+        return yes("Construction started: "+plan.name+" ("+plan.blocks.size()+" blocks, "+site.secondsRemaining+" seconds). Materials paid from the shared stockpile (specialty items from inventory).");
     }
     /** Stable ordering makes construction visibly grow from its foundation, even after a restart. */
     private static List<BlueprintData.Piece> constructionOrder(BlueprintData.Plan plan){
@@ -248,13 +249,21 @@ public final class BlueprintService {
             }
             modified=true;
             if(site.placedBlocks<ordered.size())continue;
-            // Only completed houses supply residents; construction sites do not.
+            // Registration scans actual completed blocks, just like a manual building.
+            BlockPos maximum=site.anchor.offset(width(plan,site.turns)-1,plan.height-1,depth(plan,site.turns)-1);
+            String category=plan.folder.equalsIgnoreCase("Farms")?"farm":plan.folder.equalsIgnoreCase("Houses")?"house":
+                plan.name.toLowerCase(java.util.Locale.ROOT).contains("warehouse")?"warehouse":
+                plan.name.toLowerCase(java.util.Locale.ROOT).contains("barracks")?"barracks":
+                plan.name.toLowerCase(java.util.Locale.ROOT).contains("lumber")?"lumber camp":
+                plan.name.toLowerCase(java.util.Locale.ROOT).contains("mine")?"mine":"house";
+            String registration=RegisteredBuildings.get(server).register(level,plan.owner,site.anchor,maximum,category);
+            // Completed blueprint metadata is retained only for library history.
             data.built.put(site.id,new BlueprintData.Built(site.id,plan.owner,plan.dimension,site.anchor,plan.id,plan.housingSlots()));
             iterator.remove();
             ServerPlayer player=server.getPlayerList().getPlayer(site.player);
             if(player!=null)player.sendSystemMessage(Component.literal("[Kingdom Architect] Finished "+plan.name+
                     " ("+site.placedBlocks+" blocks) at "+site.anchor.toShortString()+
-                    ". Housing capacity +"+plan.housingSlots()+"."));
+                    ". "+registration));
         }
         if(modified)data.setDirty();
     }

@@ -15,7 +15,7 @@ import net.minecraft.world.phys.BlockHitResult;
 public final class KingdomManagerBlock extends Block {
     public KingdomManagerBlock(BlockBehaviour.Properties properties){super(properties);}
     @Override public InteractionResult use(BlockState state,Level level,BlockPos pos,Player player,InteractionHand hand,BlockHitResult hit){
-        if(!level.isClientSide&&hand==InteractionHand.MAIN_HAND&&player instanceof ServerPlayer sp)DistrictNetwork.send(sp,pos,pos.getX()>>4,pos.getZ()>>4,"");
+        if(!level.isClientSide&&hand==InteractionHand.MAIN_HAND&&player instanceof ServerPlayer sp)ManagerNetwork.open(sp,"");
         return InteractionResult.sidedSuccess(level.isClientSide);
     }
 }

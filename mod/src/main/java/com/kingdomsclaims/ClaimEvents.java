@@ -99,7 +99,7 @@ public final class ClaimEvents {
         if(e.phase!=TickEvent.Phase.END)return;
         var server=net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
         if(server==null)return;
-        if(server.getTickCount()%20==0){MilitaryData.get(server).advance();EconomyService.tick(server);OperationsService.tick(server);BlueprintService.tick(server);}
+        if(server.getTickCount()%20==0){MilitaryData.get(server).advance();EconomyService.tick(server);OperationsService.tick(server);BlueprintService.tick(server);RegisteredBuildings.get(server).tick(server);}
         if(server.getTickCount()%200==0){
             WarMapData map=WarMapData.get(server);
             for(ServerPlayer p:server.getPlayerList().getPlayers()){map.exploreAround(p.serverLevel(),p.blockPosition(),8);OperationsService.discover(server,KingdomData.dim(p.serverLevel()),p.blockPosition().getX(),p.blockPosition().getZ());}

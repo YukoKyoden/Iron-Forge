@@ -12,5 +12,6 @@
   "item.kingdomsclaims.war_table": "War Table",
   "block.kingdomsclaims.supply_depot": "Warehouse Core",
   "block.kingdomsclaims.storage_expansion": "Warehouse Shelf",
-  "itemGroup.kingdomsclaims.main": "Kingdoms & Claims"
+  "itemGroup.kingdomsclaims.main": "Kingdoms & Claims",
+  "item.kingdomsclaims.architect_wand": "Kingdom Architect\u2019s Wand"
 }

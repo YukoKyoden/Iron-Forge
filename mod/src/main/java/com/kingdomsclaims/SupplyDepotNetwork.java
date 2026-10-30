@@ -34,6 +34,7 @@ public final class SupplyDepotNetwork {
         var k=data.kingdoms.get(f.id());var t=data.towns.get(f.id());
         boolean access=k!=null&&k.allowed(p.getUUID(),KingdomData.STORAGE)
           ||t!=null&&t.allowed(p.getUUID(),KingdomData.STORAGE);
+        if(t!=null&&t.parentKingdom!=null){var parent=data.kingdoms.get(t.parentKingdom);access|=parent!=null&&parent.allowed(p.getUUID(),KingdomData.STORAGE);}
         return access?f.id():null;
     }
     public static void open(ServerPlayer p,BlockPos pos,String message){
@@ -63,11 +64,9 @@ public final class SupplyDepotNetwork {
         static void handle(Transfer a,Supplier<NetworkEvent.Context> supplier){var ctx=supplier.get();ServerPlayer p=ctx.getSender();if(p!=null)ctx.enqueueWork(()->{
             UUID owner=faction(p,a.pos);if(owner==null){p.sendSystemMessage(Component.literal("[Depot] Not authorized at this depot."));return;}
             String result;
+            if(a.action.equals("refresh")){open(p,a.pos,"");return;}
             if(a.action.equals("all")){
-                int moved=0;for(String good:OperationsData.GOODS){
-                    String notice=PhysicalWarehouses.transfer(p,a.pos,owner,good,"deposit");
-                    if(notice.startsWith("Stored "))moved++;
-                }
+                int moved=0;for(String good:OperationsData.GOODS)moved+=PhysicalWarehouses.storeFromPlayer(p,owner,a.pos,good,2304);
                 result=moved==0?"Nothing deposited; check your carried resources or add expansion blocks.":"Deposited materials from "+moved+" resource types.";
             }else if(a.type<0||a.type>=OperationsData.GOODS.length)result="Invalid material.";
             else result=PhysicalWarehouses.transfer(p,a.pos,owner,OperationsData.GOODS[a.type],a.action);

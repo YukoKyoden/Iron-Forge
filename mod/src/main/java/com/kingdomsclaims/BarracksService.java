@@ -49,7 +49,7 @@ public final class BarracksService {
     }
     public static String execute(ServerPlayer player,BlockPos home,String action){
         ServerLevel world=player.serverLevel();
-        if(!world.getBlockState(home).is(KingdomsClaims.BARRACKS.get())||player.distanceToSqr(home.getX()+.5,home.getY()+.5,home.getZ()+.5)>64)return "Stand within 8 blocks of a placed Barracks Controller.";
+        if((!world.getBlockState(home).is(KingdomsClaims.BARRACKS.get())&&!home.equals(player.blockPosition()))||player.distanceToSqr(home.getX()+.5,home.getY()+.5,home.getZ()+.5)>64)return "Stand within 8 blocks of a placed Barracks Controller.";
         Faction faction=faction(world,home);
         if(faction==null)return "Barracks must stand inside claimed kingdom or town territory.";
         if(!canManage(player,home))return "You need town or kingdom military permission.";
@@ -72,9 +72,9 @@ public final class BarracksService {
         }
         int hire=action.equals("hire1")?1:action.equals("hire10")?10:action.equals("hire50")?50:0;
         if(hire>0){
-            int capacity=ledger.max(faction.type());
-            if((long)ledger.reserve(faction.id())+ledger.assigned(faction.id())+hire>capacity)return "This "+faction.type()+" has reached the "+capacity+"-troop stored capacity.";
-            // Three wheat per bread equivalent; local warehouse is the recruitment supply point.
+            int capacity=Math.min(ledger.max(faction.type()),RegisteredBuildings.get(player.server).barracksCapacity(player.server,faction.id()));
+            if((long)EconomyService.troops(player.server,faction.id())+hire>capacity)return "This "+faction.type()+" has reached the "+capacity+"-troop stored capacity.";
+            // Three wheat per bread equivalent; shared stockpile is the recruitment supply point.
             Map<String,Integer> supplies=Map.of("IRON",IRON_PER_SOLDIER*hire,"WHEAT",BREAD_PER_SOLDIER*hire*3);
             if(!PhysicalWarehouses.canPayLocal(world,faction.id(),home,96,supplies))
                 return "Local warehouse needs "+supplies.get("IRON")+" iron and "+supplies.get("WHEAT")+" wheat to recruit "+hire+" troops.";
@@ -82,7 +82,7 @@ public final class BarracksService {
             if(!PhysicalWarehouses.payLocal(world,faction.id(),home,96,supplies)){
                 ledger.removeReserve(faction.id(),hire);return "Warehouse stock changed; recruitment canceled.";
             }
-            return "Recruited "+hire+" "+troopName.toLowerCase(Locale.ROOT)+" using local warehouse iron and wheat.";
+            return "Recruited "+hire+" "+troopName.toLowerCase(Locale.ROOT)+" using shared stockpile iron and wheat.";
         }
         int deployed=action.equals("deploy5")?5:action.equals("deploy1")?1:0;
         if(deployed>0){

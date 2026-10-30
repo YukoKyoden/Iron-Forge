@@ -45,30 +45,28 @@ public final class EconomyService {
     }
     /** System grants must have a physical destination; no invisible ledger credits. */
     public static void credit(MinecraftServer server,UUID faction,String good,int amount){
-        var h=PhysicalWarehouses.headquarters(server,faction);
-        if(h!=null)PhysicalWarehouses.put(h.world(),faction,h.banner(),good,amount);
+        SharedStockpile.get(server).add(faction,good,amount,PhysicalWarehouses.sharedCapacity(server,faction));
     }
     public static boolean debit(MinecraftServer server,UUID faction,String good,int amount){
         return amount>0&&PhysicalWarehouses.payHeadquarters(server,faction,Map.of(good,amount));
     }
     private static int ceil(int n,int div){return (n+div-1)/div;}
     public static int troops(MinecraftServer server,UUID faction){
-        var m=MilitaryData.get(server);return m.reserve(faction)+m.assigned(faction);
+        var m=MilitaryData.get(server);UUID owner=SharedStockpile.owner(server,faction);long total=m.reserve(owner)+m.assigned(owner);
+        for(var t:KingdomData.get(server).towns.values())if(owner.equals(t.parentKingdom))total+=(long)m.reserve(t.id)+m.assigned(t.id);
+        return (int)Math.min(1_000_000,total);
     }
     /** Members plus a small proxy for settlement size until civilian NPC population exists. */
     public static int population(MinecraftServer server,UUID faction){
-        var land=KingdomData.get(server);var k=land.kingdoms.get(faction);var t=land.towns.get(faction);
-        if(k!=null)return k.members.size()+ceil(land.kingdomClaims(faction),8);
-        if(t!=null)return t.members.size()+ceil(land.townClaims(faction),8);
-        return 0;
+        return DistrictData.get(server).city(SharedStockpile.owner(server,faction)).population;
     }
     public static int ironDue(MinecraftServer server,UUID id){return ceil(troops(server,id),100);}
     public static int wheatDue(MinecraftServer server,UUID id){return ceil(troops(server,id),25)+ceil(population(server,id),5);}
-    public static boolean funded(MinecraftServer server,UUID id){return Ledger.get(server).funded.getOrDefault(id,true);}
+    public static boolean funded(MinecraftServer server,UUID id){id=SharedStockpile.owner(server,id);return Ledger.get(server).funded.getOrDefault(id,true);}
     /** Compatibility-only timer. Interfaces should use faction-specific remaining time. */
     public static int untilPayment(MinecraftServer server){return INTERVAL_SECONDS-Ledger.get(server).seconds;}
     public static int untilPayment(MinecraftServer server,UUID id){
-        Ledger ledger=Ledger.get(server);
+        id=SharedStockpile.owner(server,id);Ledger ledger=Ledger.get(server);
         if(!ledger.funded.getOrDefault(id,true))return 0;
         return ledger.nextPaymentSeconds.getOrDefault(id,INTERVAL_SECONDS-ledger.seconds);
     }
@@ -84,10 +82,10 @@ public final class EconomyService {
         if(funded(server,id))return "ACTIVE - next charge in "+untilPayment(server,id)+"s";
         var h=PhysicalWarehouses.headquarters(server,id);
         if(h==null)return "Missing settlement banner / dimension";
-        if(!PhysicalWarehouses.hasHeadquartersWarehouse(server,id))return "Place a warehouse within 192 blocks of the banner";
+
         int iron=ironDue(server,id),wheat=wheatDue(server,id),gold=goldDue(server,id);
         if(!canPayNext(server,id))return "Need "+iron+" iron, "+wheat+" wheat and "+gold+
-            " gold nuggets worth (1 ingot = 9 nuggets) together in a nearby warehouse, with room for change";
+            " gold nuggets worth (1 ingot = 9 nuggets) in the kingdom stockpile";
         return "Ready: restores automatically within one second";
     }
     public static int paidCycles(MinecraftServer server,UUID id){return Ledger.get(server).successfulPayments.getOrDefault(id,0);}
@@ -99,13 +97,13 @@ public final class EconomyService {
         ledger.seconds=(ledger.seconds+1)%INTERVAL_SECONDS;
         if(ledger.seconds==0)migrate(server); // Legacy stock migration is still bounded to one pass per five minutes.
         KingdomData land=KingdomData.get(server);
-        Set<UUID> ids=new HashSet<>(land.kingdoms.keySet());ids.addAll(land.towns.keySet());
+        Set<UUID> ids=new HashSet<>(land.kingdoms.keySet());for(var t:land.towns.values())if(t.parentKingdom==null)ids.add(t.id);
         boolean changed=false;
         for(UUID id:ids){
             boolean wasFunded=ledger.funded.getOrDefault(id,true);
-            int remaining=ledger.nextPaymentSeconds.getOrDefault(id,wasFunded?INTERVAL_SECONDS-ledger.seconds:0);
+            int remaining=ledger.nextPaymentSeconds.getOrDefault(id,wasFunded?INTERVAL_SECONDS:0);
             if(wasFunded&&remaining>1){
-                ledger.nextPaymentSeconds.put(id,remaining-1);
+                ledger.nextPaymentSeconds.put(id,remaining-1);ledger.funded.putIfAbsent(id,true);
                 continue;
             }
             if(!canPayNext(server,id)){
@@ -143,14 +141,14 @@ public final class EconomyService {
     private static void informFaction(MinecraftServer server,KingdomData land,UUID id,String message){
         for(ServerPlayer p:server.getPlayerList().getPlayers()){
             var k=land.ofPlayer(p.getUUID());var t=land.townOf(p.getUUID());
-            if(k!=null&&id.equals(k.id)||t!=null&&id.equals(t.id))
+            if(k!=null&&id.equals(SharedStockpile.owner(server,k.id))||t!=null&&id.equals(SharedStockpile.owner(server,t.id)))
                 p.sendSystemMessage(net.minecraft.network.chat.Component.literal(message));
         }
     }
     public static String depositAvailable(ServerPlayer p,UUID faction,String good,int limit){
         if(limit<1||limit>2304)return "Invalid deposit limit.";
         int amount=PhysicalWarehouses.storeFromPlayer(p,faction,p.blockPosition(),good,limit);
-        return amount>0?"Stored "+amount+" "+good+" in the nearby physical warehouse.":"Need a local warehouse with free capacity and carried resources.";
+        return amount>0?"Stored "+amount+" "+good+" in the kingdom stockpile.":"Need a kingdom stockpile with free capacity and carried resources.";
     }
     public static Item goodsItem(String good){return switch(good){
         case "IRON"->Items.IRON_INGOT;case "WHEAT"->Items.WHEAT;case "COAL"->Items.COAL;
@@ -162,8 +160,8 @@ public final class EconomyService {
         if(amount<1||amount>2304)return "Invalid deposit quantity.";
         if(carried(p,good)<amount)return "Need "+amount+" "+good+" in your inventory.";
         int moved=PhysicalWarehouses.storeFromPlayer(p,faction,p.blockPosition(),good,amount);
-        return moved==amount?"Deposited "+moved+" "+good+" at the local warehouse.":
-            moved>0?"Stored "+moved+"; local warehouse needs more capacity.":"No available local warehouse; move within 96 blocks of a Warehouse Core.";
+        return moved==amount?"Deposited "+moved+" "+good+" at the kingdom stockpile.":
+            moved>0?"Stored "+moved+"; kingdom stockpile needs more capacity.":"No available kingdom stockpile; move within 96 blocks of a Warehouse Core.";
     }
     public static int carried(ServerPlayer p,String good){
         Item item=goodsItem(good);if(item==null)return 0;
@@ -178,6 +176,6 @@ public final class EconomyService {
     public static String depositAllCarried(ServerPlayer p,UUID faction){
         int count=0;
         for(String good:OperationsData.GOODS)count+=PhysicalWarehouses.storeFromPlayer(p,faction,p.blockPosition(),good,2304);
-        return count>0?"Stored "+count+" physical resources.":"No resources transferred; check local warehouse space.";
+        return count>0?"Stored "+count+" physical resources.":"No resources transferred; check kingdom stockpile space.";
     }
 }

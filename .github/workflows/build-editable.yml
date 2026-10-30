@@ -1,10 +1,5 @@
 name: Build editable Kingdoms & Claims source
 on:
-  push:
-    branches: [kingdoms-claims-v0426-simplification]
-    paths:
-      - 'mod/**'
-      - '.github/workflows/build-editable.yml'
   workflow_dispatch:
 permissions:
   contents: read

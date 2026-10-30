@@ -78,7 +78,7 @@ public final class WarMapNetwork {
     }
     public static boolean isAuthorizedControl(ServerPlayer p,BlockPos control){
         var block=p.serverLevel().getBlockState(control);
-        boolean compatible=block.is(KingdomsClaims.WAR_TABLE.get())||block.is(KingdomsClaims.KINGDOM_MANAGER.get());
+        boolean compatible=block.is(KingdomsClaims.WAR_TABLE.get())||block.is(KingdomsClaims.KINGDOM_MANAGER.get())||control.equals(p.blockPosition());
         return compatible && p.distanceToSqr(control.getX()+.5,control.getY()+.5,control.getZ()+.5)<=64
             && BarracksService.faction(p.serverLevel(),control)!=null && BarracksService.canManage(p,control);
     }

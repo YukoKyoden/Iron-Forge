@@ -45,7 +45,7 @@ public final class WarTableNetwork {
         static void handle(Snapshot s,Supplier<NetworkEvent.Context> supplier){var ctx=supplier.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->WarTableClient.accept(s)));ctx.setPacketHandled(true);}
     }
     public static void open(ServerPlayer player,BlockPos pos,String message){
-        if(!player.serverLevel().getBlockState(pos).is(KingdomsClaims.WAR_TABLE.get())||player.distanceToSqr(pos.getX()+.5,pos.getY()+.5,pos.getZ()+.5)>64)return;
+        if(!WarMapNetwork.isAuthorizedControl(player,pos))return;
         var faction=BarracksService.faction(player.serverLevel(),pos);boolean authorized=BarracksService.canManage(player,pos);
         MilitaryData m=MilitaryData.get(player.getServer());List<ArmyInfo> armies=new ArrayList<>();
         if(faction!=null)for(var a:m.armiesOf(faction.id()))armies.add(new ArmyInfo(a.id,a.name,a.strength,a.fielded,a.formation,a.uniform,

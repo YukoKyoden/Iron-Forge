@@ -28,6 +28,7 @@ public final class KingdomsClaims {
     public static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, MODID);
     public static final RegistryObject<EntityType<SoldierEntity>> SOLDIER=ENTITIES.register("militia",()->
             EntityType.Builder.of(SoldierEntity::new,MobCategory.CREATURE).sized(0.6f,1.95f).clientTrackingRange(8).build("kingdomsclaims:militia"));
+    public static final RegistryObject<Item> ARCHITECT_WAND=ITEMS.register("architect_wand",()->new ArchitectWand(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Block> KINGDOM_MANAGER = BLOCKS.register("kingdom_manager",()->
             new KingdomManagerBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(3.5f)));
     public static final RegistryObject<Item> KINGDOM_MANAGER_ITEM = ITEMS.register("kingdom_manager",()->new BlockItem(KINGDOM_MANAGER.get(),new Item.Properties()));
@@ -65,7 +66,7 @@ public final class KingdomsClaims {
                     output.accept(KINGDOM_BANNER_ITEM.get());output.accept(TOWN_BANNER_ITEM.get());
                     output.accept(KINGDOM_MANAGER_ITEM.get());output.accept(WAR_TABLE_ITEM.get());
                     output.accept(BARRACKS_ITEM.get());output.accept(SUPPLY_DEPOT_ITEM.get());
-                    output.accept(STORAGE_EXPANSION_ITEM.get());
+                    output.accept(STORAGE_EXPANSION_ITEM.get());output.accept(ARCHITECT_WAND.get());
                 }).build());
     public KingdomsClaims() {
         IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
@@ -82,8 +83,8 @@ public final class KingdomsClaims {
         OperationsNetwork.register();
         DistrictNetwork.register();
         BlueprintNetwork.register();
-        SupplyDepotNetwork.register();
-        MinecraftForge.EVENT_BUS.register(ClaimEvents.class);
+        SupplyDepotNetwork.register();BuildingNetwork.register();ManagerNetwork.register();
+        MinecraftForge.EVENT_BUS.register(ClaimEvents.class);MinecraftForge.EVENT_BUS.register(RegisteredBuildings.class);
         MinecraftForge.EVENT_BUS.register(PhysicalWarehouses.class);
         MinecraftForge.EVENT_BUS.register(PlayerBuildEvents.class);
         MinecraftForge.EVENT_BUS.register(KingdomCommands.class);

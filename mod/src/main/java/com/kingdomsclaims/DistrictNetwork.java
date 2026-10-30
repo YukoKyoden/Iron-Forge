@@ -234,7 +234,7 @@ public final class DistrictNetwork {
         }
         var city=data.city(faction.id());CHANNEL.send(PacketDistributor.PLAYER.with(()->p),new Snapshot(pos,cx,cz,faction.name(),faction.type(),terrain,claims,zoning,summary,
                 EconomyService.balance(p.getServer(),faction.id(),"GOLD"),EconomyService.balance(p.getServer(),faction.id(),"IRON"),EconomyService.balance(p.getServer(),faction.id(),"WHEAT"),
-                city.population,BlueprintData.get(p.getServer()).housing(faction.id()),BlueprintData.get(p.getServer()).homes(faction.id()),0,
+                city.population,RegisteredBuildings.get(p.server).housing(p.server,faction.id()),RegisteredBuildings.get(p.server).of(p.server,faction.id()).size(),0,
                 city.tax,data.estimatedTaxes(faction.id()),data.payroll(p.getServer(),faction.id()),city.happiness,EconomyService.funded(p.getServer(),faction.id()),EconomyService.untilPayment(p.getServer(),faction.id()),message,stock,carry,
                 EconomyService.ironDue(p.getServer(),faction.id()),EconomyService.wheatDue(p.getServer(),faction.id()),markers));
     }

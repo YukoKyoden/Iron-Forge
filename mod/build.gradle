@@ -5,7 +5,7 @@ plugins {
     id 'net.minecraftforge.gradle' version '[6.0,6.2)'
 }
 
-version = '0.4.25.2'
+version = '0.4.26'
 group = 'com.kingdomsclaims'
 base { archivesName = 'kingdomsclaims' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
@@ -32,3 +32,5 @@ repositories { }
 dependencies { minecraft 'net.minecraftforge:forge:1.20.1-47.4.28' }
 
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+
+tasks.named('jar').configure { finalizedBy 'reobfJar' }

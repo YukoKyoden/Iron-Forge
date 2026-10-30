@@ -1,10 +1,8 @@
-name: Build Kingdoms and Claims v0.4.25.2
+name: Build Kingdoms and Claims v0.4.26
 on:
   push:
-    branches: [kingdoms-claims-v04252-physical-gold]
-    paths:
-      - '.github/workflows/build.yml'
-      - 'kingdomsclaims-v04252-src.b64.txt'
+    branches: [kingdoms-claims-v0426-simplification]
+    paths: ['mod/**', '.github/workflows/build.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -14,82 +12,31 @@ jobs:
     timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - name: Set up Gradle 8.8
-        uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.8'
-      - name: Extract Kingdoms and Claims v0.4.25.2 project
+      - name: Test stockpile transactions and housing geometry
+        working-directory: mod
         run: |
-          mkdir -p kc
-          base64 -d kingdomsclaims-v04252-src.b64.txt > kc-src.tar.xz
-          tar -xJf kc-src.tar.xz -C kc
-          test -f kc/kingdoms-claims-forge/build.gradle
-      - name: Source consistency checks
-        working-directory: kc/kingdoms-claims-forge
-        run: python3 tests/source_checks.py
-      - name: Test house capacity geometry
-        working-directory: kc/kingdoms-claims-forge
-        run: |
-          mkdir -p build/housingtest
-          javac --release 17 -d build/housingtest src/main/java/com/kingdomsclaims/HousingMath.java tests/HousingMathTest.java
-          java -cp build/housingtest HousingMathTest
-      - name: Verify new claims and depot safeguards
-        working-directory: kc/kingdoms-claims-forge
-        run: python3 tests/test_0417.py
-      - name: Verify physical inventory links and local transfers
-        working-directory: kc/kingdoms-claims-forge
-        run: python3 tests/test_0418.py
-      - name: Verify modular warehouse capacity and performance safeguards
-        working-directory: kc/kingdoms-claims-forge
-        run: python3 tests/test_0419.py
-      - name: Verify 3D claims and modular storage safeguards
-        working-directory: kc/kingdoms-claims-forge
-        run: |
-          python3 tests/test_0417.py
-          python3 tests/test_0418.py
-          python3 tests/test_0419.py
-      - name: Validate v0.4.25.2 chain warehouse and render models
-        working-directory: kc/kingdoms-claims-forge
-        run: python3 tests/test_0421.py
-      - name: Validate v0.4.25.2 claim click safety and shelf assets
-        working-directory: kc/kingdoms-claims-forge
-        run: python3 tests/test_0422.py
-      - name: Verify local economy and planner markers
-        working-directory: kc/kingdoms-claims-forge
-        run: |
-          python3 tests/test_0423.py
-          python3 tests/test_0423_economy.py
-      - name: Verify vanilla shelf textures and claim crash fix
-        working-directory: kc/kingdoms-claims-forge
-        run: python3 tests/test_0424.py
-      - name: Verify v0.4.25.2 physical economy and safeguards
-        working-directory: kc/kingdoms-claims-forge
-        run: python3 tests/test_0425.py
-      - name: Verify immediate funded recovery and per-faction timers
-        working-directory: kc/kingdoms-claims-forge
-        run: python3 tests/test_0425_1.py
-      - name: Verify physical gold migration and upkeep
-        working-directory: kc/kingdoms-claims-forge
-        run: python3 tests/test_0425_2.py
-      - name: Build Forge 1.20.1 mod
-        working-directory: kc/kingdoms-claims-forge
+          mkdir -p build/regression
+          javac --release 17 -d build/regression src/main/java/com/kingdomsclaims/StockpileMath.java tests/StockpileMathTest.java src/main/java/com/kingdomsclaims/HousingMath.java tests/HousingMathTest.java
+          java -cp build/regression StockpileMathTest
+          java -cp build/regression HousingMathTest
+          python3 tests/test_0426.py
+      - name: Build and reobfuscate Forge 1.20.1 mod
+        working-directory: mod
         run: gradle --no-daemon --stacktrace clean build
-      - name: Verify installable JAR
+      - name: Verify compiled JAR
         run: |
-          set -e
-          find kc/kingdoms-claims-forge/build/libs -type f -name '*.jar' -print
-          modjar=$(find kc/kingdoms-claims-forge/build/libs -maxdepth 1 -name 'kingdomsclaims-0.4.25.2.jar' | head -n 1)
-          test -n "$modjar"
-          jar tf "$modjar" | grep -q 'META-INF/mods.toml'
-          jar tf "$modjar" | grep -q 'com/kingdomsclaims/'
-      - name: Upload playable JAR
-        uses: actions/upload-artifact@v4
+          test -f mod/build/libs/kingdomsclaims-0.4.26.jar
+          jar tf mod/build/libs/kingdomsclaims-0.4.26.jar | grep -q META-INF/mods.toml
+          jar tf mod/build/libs/kingdomsclaims-0.4.26.jar | grep -q com/kingdomsclaims/RegisteredBuildings.class
+      - uses: actions/upload-artifact@v4
         with:
-          name: KingdomsClaims-v0.4.25.2-Forge-1.20.1
-          path: kc/kingdoms-claims-forge/build/libs/kingdomsclaims-0.4.25.2.jar
+          name: KingdomsClaims-v0.4.26-Forge-1.20.1
+          path: mod/build/libs/kingdomsclaims-0.4.26.jar
           if-no-files-found: error
