@@ -1,10 +1,10 @@
-name: Build Kingdoms and Claims v0.4.17
+name: Build Kingdoms and Claims v0.4.18
 on:
   push:
-    branches: [kingdoms-claims-v0417-claims-depot]
+    branches: [kingdoms-claims-v0418-local-warehouses]
     paths:
       - '.github/workflows/build.yml'
-      - 'kingdomsclaims-v0417-src.b64.txt'
+      - 'kingdomsclaims-v0418-src.b64.txt'
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,10 +23,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.8'
-      - name: Extract Kingdoms and Claims v0.4.17 project
+      - name: Extract Kingdoms and Claims v0.4.18 project
         run: |
           mkdir -p kc
-          base64 -d kingdomsclaims-v0417-src.b64.txt > kc-src.tar.xz
+          base64 -d kingdomsclaims-v0418-src.b64.txt > kc-src.tar.xz
           tar -xJf kc-src.tar.xz -C kc
           test -f kc/kingdoms-claims-forge/build.gradle
       - name: Source consistency checks
@@ -41,6 +41,9 @@ jobs:
       - name: Verify new claims and depot safeguards
         working-directory: kc/kingdoms-claims-forge
         run: python3 tests/test_0417.py
+      - name: Verify physical inventory links and local transfers
+        working-directory: kc/kingdoms-claims-forge
+        run: python3 tests/test_0418.py
       - name: Build Forge 1.20.1 mod
         working-directory: kc/kingdoms-claims-forge
         run: gradle --no-daemon --stacktrace clean build
@@ -48,13 +51,13 @@ jobs:
         run: |
           set -e
           find kc/kingdoms-claims-forge/build/libs -type f -name '*.jar' -print
-          modjar=$(find kc/kingdoms-claims-forge/build/libs -maxdepth 1 -name 'kingdomsclaims-0.4.17.jar' | head -n 1)
+          modjar=$(find kc/kingdoms-claims-forge/build/libs -maxdepth 1 -name 'kingdomsclaims-0.4.18.jar' | head -n 1)
           test -n "$modjar"
           jar tf "$modjar" | grep -q 'META-INF/mods.toml'
           jar tf "$modjar" | grep -q 'com/kingdomsclaims/'
       - name: Upload playable JAR
         uses: actions/upload-artifact@v4
         with:
-          name: KingdomsClaims-v0.4.17-Forge-1.20.1
-          path: kc/kingdoms-claims-forge/build/libs/kingdomsclaims-0.4.17.jar
+          name: KingdomsClaims-v0.4.18-Forge-1.20.1
+          path: kc/kingdoms-claims-forge/build/libs/kingdomsclaims-0.4.18.jar
           if-no-files-found: error
