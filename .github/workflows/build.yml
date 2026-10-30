@@ -63,7 +63,7 @@ jobs:
         run: |
           set -e
           find kc/kingdoms-claims-forge/build/libs -type f -name '*.jar' -print
-          modjar=$(find kc/kingdoms-claims-forge/build/libs -maxdepth 1 -name 'kingdomsclaims-0.4.20.jar' | head -n 1)
+          modjar=$(find kc/kingdoms-claims-forge/build/libs -maxdepth 1 -name 'kingdomsclaims-0.4.21.jar' | head -n 1)
           test -n "$modjar"
           jar tf "$modjar" | grep -q 'META-INF/mods.toml'
           jar tf "$modjar" | grep -q 'com/kingdomsclaims/'
@@ -71,5 +71,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KingdomsClaims-v0.4.21-Forge-1.20.1
-          path: kc/kingdoms-claims-forge/build/libs/kingdomsclaims-0.4.20.jar
+          path: kc/kingdoms-claims-forge/build/libs/kingdomsclaims-0.4.21.jar
           if-no-files-found: error
