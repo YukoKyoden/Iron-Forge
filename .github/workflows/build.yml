@@ -1,10 +1,10 @@
-name: Build Kingdoms and Claims v0.4.25.1
+name: Build Kingdoms and Claims v0.4.25.2
 on:
   push:
-    branches: [kingdoms-claims-v04251-upkeep-hotfix]
+    branches: [kingdoms-claims-v04252-physical-gold]
     paths:
       - '.github/workflows/build.yml'
-      - 'kingdomsclaims-v04251-src.b64.txt'
+      - 'kingdomsclaims-v04252-src.b64.txt'
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,10 +23,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.8'
-      - name: Extract Kingdoms and Claims v0.4.25.1 project
+      - name: Extract Kingdoms and Claims v0.4.25.2 project
         run: |
           mkdir -p kc
-          base64 -d kingdomsclaims-v04251-src.b64.txt > kc-src.tar.xz
+          base64 -d kingdomsclaims-v04252-src.b64.txt > kc-src.tar.xz
           tar -xJf kc-src.tar.xz -C kc
           test -f kc/kingdoms-claims-forge/build.gradle
       - name: Source consistency checks
@@ -53,10 +53,10 @@ jobs:
           python3 tests/test_0417.py
           python3 tests/test_0418.py
           python3 tests/test_0419.py
-      - name: Validate v0.4.25.1 chain warehouse and render models
+      - name: Validate v0.4.25.2 chain warehouse and render models
         working-directory: kc/kingdoms-claims-forge
         run: python3 tests/test_0421.py
-      - name: Validate v0.4.25.1 claim click safety and shelf assets
+      - name: Validate v0.4.25.2 claim click safety and shelf assets
         working-directory: kc/kingdoms-claims-forge
         run: python3 tests/test_0422.py
       - name: Verify local economy and planner markers
@@ -67,12 +67,15 @@ jobs:
       - name: Verify vanilla shelf textures and claim crash fix
         working-directory: kc/kingdoms-claims-forge
         run: python3 tests/test_0424.py
-      - name: Verify v0.4.25.1 physical economy and safeguards
+      - name: Verify v0.4.25.2 physical economy and safeguards
         working-directory: kc/kingdoms-claims-forge
         run: python3 tests/test_0425.py
       - name: Verify immediate funded recovery and per-faction timers
         working-directory: kc/kingdoms-claims-forge
         run: python3 tests/test_0425_1.py
+      - name: Verify physical gold migration and upkeep
+        working-directory: kc/kingdoms-claims-forge
+        run: python3 tests/test_0425_2.py
       - name: Build Forge 1.20.1 mod
         working-directory: kc/kingdoms-claims-forge
         run: gradle --no-daemon --stacktrace clean build
@@ -80,13 +83,13 @@ jobs:
         run: |
           set -e
           find kc/kingdoms-claims-forge/build/libs -type f -name '*.jar' -print
-          modjar=$(find kc/kingdoms-claims-forge/build/libs -maxdepth 1 -name 'kingdomsclaims-0.4.25.1.jar' | head -n 1)
+          modjar=$(find kc/kingdoms-claims-forge/build/libs -maxdepth 1 -name 'kingdomsclaims-0.4.25.2.jar' | head -n 1)
           test -n "$modjar"
           jar tf "$modjar" | grep -q 'META-INF/mods.toml'
           jar tf "$modjar" | grep -q 'com/kingdomsclaims/'
       - name: Upload playable JAR
         uses: actions/upload-artifact@v4
         with:
-          name: KingdomsClaims-v0.4.25.1-Forge-1.20.1
-          path: kc/kingdoms-claims-forge/build/libs/kingdomsclaims-0.4.25.1.jar
+          name: KingdomsClaims-v0.4.25.2-Forge-1.20.1
+          path: kc/kingdoms-claims-forge/build/libs/kingdomsclaims-0.4.25.2.jar
           if-no-files-found: error
