@@ -26,7 +26,7 @@ jobs:
       - name: Extract Kingdoms and Claims v0.4.24 project
         run: |
           mkdir -p kc
-          base64 -d kingdomsclaims-v0424-full-src.b64.txt > kc-src.tar.xz
+          base64 -d kingdomsclaims-v0424-src.b64.txt > kc-src.tar.xz
           tar -xJf kc-src.tar.xz -C kc
           test -f kc/kingdoms-claims-forge/build.gradle
       - name: Source consistency checks
