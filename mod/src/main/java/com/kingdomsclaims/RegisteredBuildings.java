@@ -70,7 +70,7 @@ public final class RegisteredBuildings extends SavedData {
         for(Building old:buildings)if(old.dimension.equals(b.dimension)&&b.min.getX()<=old.max.getX()&&b.max.getX()>=old.min.getX()&&b.min.getY()<=old.max.getY()&&b.max.getY()>=old.min.getY()&&b.min.getZ()<=old.max.getZ()&&b.max.getZ()>=old.min.getZ())return "Selection overlaps a registered structure.";
         return null;
     }
-    public Survey preview(ServerPlayer p,BlockPos a,BlockPos c,String type){var f=BlueprintService.atPlayer(p);if(f==null)return new Survey(0,"BUILD permission required in your claim.");
+    public Survey preview(ServerPlayer p,BlockPos a,BlockPos c,String type){if(p.distanceToSqr(a.getX(),a.getY(),a.getZ())>128*128||p.distanceToSqr(c.getX(),c.getY(),c.getZ())>128*128)return new Survey(0,"Select a building within 128 blocks.");var f=BlueprintService.atPlayer(p);if(f==null)return new Survey(0,"BUILD permission required in your claim.");
         Building b=selection(f.id(),KingdomData.dim(p.serverLevel()),a,c,type);String issue=issue(p.serverLevel(),b);
         if(issue!=null)return new Survey(0,issue);if(!canRegister(p,b))return new Survey(0,"BUILD permission required throughout selection.");return scan(p.serverLevel(),b,false);
     }
@@ -82,6 +82,7 @@ public final class RegisteredBuildings extends SavedData {
     private static boolean roof(ServerLevel w,BlockPos p,Building b){for(int dy=2;dy<=Math.min(8,b.max.getY()-p.getY());dy++)if(w.getBlockState(p.above(dy)).isSolidRender(w,p.above(dy)))return true;return false;}
     private static Survey scan(ServerLevel w,Building b,boolean harvest){
         int beds=0,plots=0,storage=0,logs=0,leaves=0,stone=0,air=0,doors=0,stations=0,ripe=0;
+        int stockCapacity=harvest?PhysicalWarehouses.sharedCapacity(w.getServer(),b.owner):0;
         for(BlockPos p:BlockPos.betweenClosed(b.min,b.max)){
             BlockState s=w.getBlockState(p);
             if(s.getBlock() instanceof BedBlock&&s.getValue(BedBlock.PART)==BedPart.HEAD&&roof(w,p,b)&&w.getBlockState(p.above()).isAir()&&w.getBlockState(p.below()).isSolidRender(w,p.below()))beds++;
@@ -97,7 +98,7 @@ public final class RegisteredBuildings extends SavedData {
                 BlockPos crop=p.above();BlockState cs=w.getBlockState(crop);
                 if(cs.is(Blocks.WHEAT)){plots++;
                     if(cs.getValue(CropBlock.AGE)==7){ripe++;
-                        if(harvest){int accepted=SharedStockpile.get(w.getServer()).add(b.owner,"WHEAT",1,PhysicalWarehouses.sharedCapacity(w.getServer(),b.owner));
+                        if(harvest){int accepted=SharedStockpile.get(w.getServer()).add(b.owner,"WHEAT",1,stockCapacity);
                             if(accepted>0)w.setBlock(crop,cs.setValue(CropBlock.AGE,0),2);}
                     }
                 }

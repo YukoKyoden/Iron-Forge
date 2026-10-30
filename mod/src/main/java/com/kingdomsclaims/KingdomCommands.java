@@ -40,7 +40,7 @@ public final class KingdomCommands {
                     BlockPos a=BlockPosArgument.getLoadedBlockPos(c,"corner1"),b=BlockPosArgument.getLoadedBlockPos(c,"corner2");
                     String result=RegisteredBuildings.get(p.server).register(p,a,b,StringArgumentType.getString(c,"type"));
                     return result.startsWith("Registered ")?ok(c,result):err(c,result);
-                }))))
+                })))))
             .then(Commands.literal("help").executes(c->ok(c,"/kingdom create/list/info/members/invite/accept/decline/leave/kick/officer/member/transfer/rename/disband/claim/unclaim/here/grid/costs/expansion/banner/permit/treasury/annex | K = map")))
             .then(Commands.literal("create").then(Commands.argument("name",StringArgumentType.word()).executes(KingdomCommands::create)))
             .then(Commands.literal("list").executes(KingdomCommands::list))

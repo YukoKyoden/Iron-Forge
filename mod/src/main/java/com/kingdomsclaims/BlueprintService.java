@@ -75,7 +75,7 @@ public final class BlueprintService {
             BlockState state=level.getBlockState(pos);if(state.isAir())continue;
             // Exclude inventories, signs, chests, fluids and unsupported blocks rather than
             // rejecting the entire building. This is safe: none of their data is copied.
-            if(level.getBlockEntity(pos)!=null || !state.getFluidState().isEmpty() || state.getBlock().asItem()==Items.AIR){skipped++;continue;}
+            if((level.getBlockEntity(pos)!=null && !(state.getBlock() instanceof net.minecraft.world.level.block.BedBlock) && !(state.getBlock() instanceof net.minecraft.world.level.block.ChestBlock) && !(state.getBlock() instanceof net.minecraft.world.level.block.BarrelBlock)) || !state.getFluidState().isEmpty() || state.getBlock().asItem()==Items.AIR){skipped++;continue;}
             if(plan.blocks.size()>=BlueprintData.MAX_BLOCKS)return no("Maximum 4096 non-air blocks in a blueprint.");
             plan.blocks.add(new BlueprintData.Piece(x,y,z,NbtUtils.writeBlockState(state)));
         }

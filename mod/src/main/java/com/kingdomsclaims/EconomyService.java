@@ -68,7 +68,7 @@ public final class EconomyService {
     public static int untilPayment(MinecraftServer server,UUID id){
         id=SharedStockpile.owner(server,id);Ledger ledger=Ledger.get(server);
         if(!ledger.funded.getOrDefault(id,true))return 0;
-        return ledger.nextPaymentSeconds.getOrDefault(id,INTERVAL_SECONDS-ledger.seconds);
+        return ledger.nextPaymentSeconds.getOrDefault(id,INTERVAL_SECONDS);
     }
     public static int goldDue(MinecraftServer server,UUID id){return DistrictData.get(server).payroll(server,id);}
     private static Map<String,Integer> upkeepGoods(MinecraftServer server,UUID id){
@@ -165,7 +165,7 @@ public final class EconomyService {
     }
     public static int carried(ServerPlayer p,String good){
         Item item=goodsItem(good);if(item==null)return 0;
-        int count=0;for(ItemStack slot:p.getInventory().items)if(slot.is(item))count+=slot.getCount();
+        int count=0;for(ItemStack slot:p.getInventory().items)if(slot.is(item)&&!slot.hasTag())count+=slot.getCount();
         return count;
     }
     public static String withdraw(ServerPlayer p,UUID faction,String good,int limit){

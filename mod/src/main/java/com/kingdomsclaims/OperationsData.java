@@ -27,11 +27,10 @@ public final class OperationsData extends SavedData {
     }
     public final Map<UUID,Site> sites=new LinkedHashMap<>();
     public final Map<UUID,Caravan> caravans=new LinkedHashMap<>();
-    private final Map<UUID,Map<String,Integer>> warehouses=new HashMap<>();
     public static OperationsData get(MinecraftServer server){return server.overworld().getDataStorage().computeIfAbsent(OperationsData::load,OperationsData::new,"kingdomsclaims_operations");}
-    public int warehouse(UUID faction,String good){return warehouses.getOrDefault(faction,Map.of()).getOrDefault(good,0);}
-    public void credit(UUID faction,String good,int amount){if(faction==null||amount<=0||amount>100000)return;Map<String,Integer> inv=warehouses.computeIfAbsent(faction,k->new HashMap<>());inv.put(good,Math.min(2000000000,inv.getOrDefault(good,0)+amount));setDirty();}
-    public boolean debit(UUID faction,String good,int amount){if(amount<=0||warehouse(faction,good)<amount)return false;warehouses.get(faction).put(good,warehouse(faction,good)-amount);setDirty();return true;}
+    public int warehouse(UUID faction,String good){var server=net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();return server==null?0:EconomyService.balance(server,faction,good);}
+    public void credit(UUID faction,String good,int amount){var server=net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();if(server!=null)EconomyService.credit(server,faction,good,amount);}
+    public boolean debit(UUID faction,String good,int amount){var server=net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();return server!=null&&EconomyService.debit(server,faction,good,amount);}
     public boolean committed(UUID id){if(id==null)return false;for(Site s:sites.values())if(id.equals(s.army)||id.equals(s.attacker))return true;for(Caravan c:caravans.values())if(id.equals(c.army)||id.equals(c.attacker))return true;return false;}
     public int outposts(UUID faction){int n=0;for(Site s:sites.values())if("OUTPOST".equals(s.stage)&&faction.equals(s.owner))n++;return n;}
     public Site nearest(String dim,int x,int z,int radius){Site nearest=null;double d=radius*radius;for(Site s:sites.values())if(s.dim.equals(dim)){double q=(double)(x-s.x)*(x-s.x)+(double)(z-s.z)*(z-s.z);if(q<d){d=q;nearest=s;}}return nearest;}
@@ -47,9 +46,7 @@ public final class OperationsData extends SavedData {
             CompoundTag t=(CompoundTag)entry;Caravan c=new Caravan();if(!t.hasUUID("Id"))continue;c.id=t.getUUID("Id");c.dim=t.getString("Dim");c.good=t.getString("Good");c.stage=t.getString("Stage");c.amount=t.getInt("Amount");c.x=t.getInt("X");c.z=t.getInt("Z");c.locationX=t.getDouble("LocationX");c.locationZ=t.getDouble("LocationZ");c.raidSeconds=t.getInt("Raid");
             if(t.hasUUID("Faction"))c.faction=t.getUUID("Faction");if(t.hasUUID("Destination"))c.destinationFaction=t.getUUID("Destination");if(t.hasUUID("Army"))c.army=t.getUUID("Army");if(t.hasUUID("Attacker"))c.attacker=t.getUUID("Attacker");if(t.hasUUID("AttackerFaction"))c.attackerFaction=t.getUUID("AttackerFaction");d.caravans.put(c.id,c);
         }
-        for(Tag entry:root.getList("Warehouses",Tag.TAG_COMPOUND)){
-            CompoundTag t=(CompoundTag)entry;if(!t.hasUUID("Faction"))continue;Map<String,Integer> goods=new HashMap<>();for(String g:GOODS)goods.put(g,Math.max(0,t.getInt(g)));d.warehouses.put(t.getUUID("Faction"),goods);
-        }return d;
+        return d;
     }
     @Override public CompoundTag save(CompoundTag root){
         root.putInt("Schema",1);ListTag siteList=new ListTag();for(Site s:sites.values()){
@@ -61,6 +58,6 @@ public final class OperationsData extends SavedData {
             CompoundTag t=new CompoundTag();t.putUUID("Id",c.id);t.putString("Dim",c.dim);t.putString("Good",c.good);t.putString("Stage",c.stage);t.putInt("Amount",c.amount);t.putInt("X",c.x);t.putInt("Z",c.z);t.putDouble("LocationX",c.locationX);t.putDouble("LocationZ",c.locationZ);t.putInt("Raid",c.raidSeconds);
             if(c.faction!=null)t.putUUID("Faction",c.faction);if(c.destinationFaction!=null)t.putUUID("Destination",c.destinationFaction);if(c.army!=null)t.putUUID("Army",c.army);if(c.attacker!=null)t.putUUID("Attacker",c.attacker);if(c.attackerFaction!=null)t.putUUID("AttackerFaction",c.attackerFaction);travel.add(t);
         }root.put("Caravans",travel);
-        ListTag stocks=new ListTag();for(var e:warehouses.entrySet()){CompoundTag t=new CompoundTag();t.putUUID("Faction",e.getKey());for(String g:GOODS)t.putInt(g,Math.max(0,e.getValue().getOrDefault(g,0)));stocks.add(t);}root.put("Warehouses",stocks);return root;
+        return root;
     }
 }

@@ -340,6 +340,7 @@ public final class KingdomOverviewClient {
                 // Folder entries and their flyout are drawn on top of the 3D world by
                 // renderBuildLibrary. Hover over a folder, then click a design.
                 int y=height-178;
+                btn("Register existing building",inner,y-25,w,21,0xFF9ED09A,"Select a manually built structure",()->{onClose();WorldSelectionClient.registerBuilding();});
                 btn("Capture new build",inner,y,w,22,0xFF9BC5E2,
                     "Select a house, road, bridge or other build in player view",()->{
                         BlueprintNetwork.CHANNEL.sendToServer(new BlueprintNetwork.SelectRequest(data.manager()));onClose();

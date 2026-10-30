@@ -36,6 +36,7 @@ public final class WorldArchitectClient {
     private WorldArchitectClient(){}
     private static BlueprintNetwork.Preview active;
     private static List<GhostPiece> cached = List.of();
+    private static java.util.List<java.util.Map.Entry<net.minecraft.world.item.Item,Integer>> materialCosts=java.util.List.of();
     private static java.util.Set<Long> ownedChunks=java.util.Set.of();
     private static int turns=0,verticalOffset=0;
     private static final double PLACEMENT_REACH=96.0;
@@ -59,6 +60,8 @@ public final class WorldArchitectClient {
         java.util.HashSet<Long> allowed=new java.util.HashSet<>();
         for(long key:preview.ownedChunks())allowed.add(key);
         ownedChunks=java.util.Set.copyOf(allowed);
+        BlueprintData.Plan costPlan=new BlueprintData.Plan(preview.id(),new java.util.UUID(0,0),"",preview.name(),preview.width(),preview.height(),preview.depth());
+        costPlan.blocks.addAll(preview.pieces());materialCosts=new java.util.ArrayList<>(BlueprintService.requirements(costPlan).entrySet());
         cached=List.copyOf(pieces);active=preview;turns=0;verticalOffset=0;anchor=null;waiting=false;cooldownTicks=0;lastPlacedAnchor=null;repeatPlacement=true;
         notice="Aim up to 96 blocks away to position the house";
         if(mc.screen!=null)mc.setScreen(null);
@@ -219,6 +222,11 @@ public final class WorldArchitectClient {
         if(active==null||mc.screen!=null||mc.player==null||!event.getOverlay().id().getPath().equals("hotbar"))return;
         GuiGraphics g=event.getGuiGraphics();int w=mc.getWindow().getGuiScaledWidth();int h=mc.getWindow().getGuiScaledHeight();
         int cx=w/2,bottom=h-61;
+        int visible=Math.min(materialCosts.size(),Math.max(1,(w-24)/42)),start=cx-visible*21;
+        for(int i=0;i<visible;i++){var e=materialCosts.get(i);int xx=start+i*42,yy=bottom-82;
+            g.fill(xx,yy,xx+40,yy+40,0xE5303030);g.renderItem(new net.minecraft.world.item.ItemStack(e.getKey()),xx+12,yy+3);
+            g.drawCenteredString(mc.font,ResourceSlots.compact(e.getValue()),xx+20,yy+24,0xFFFFFFFF);
+        }
         g.fill(cx-150,bottom-28,cx+150,bottom+30,0xE5192932);
         g.fill(cx-150,bottom-28,cx+150,bottom-26,0xFFE0BC7D);
         g.drawCenteredString(mc.font,"ARCHITECT  /  "+mc.font.plainSubstrByWidth(active.name(),200),cx,bottom-21,0xFFFFE5AA);

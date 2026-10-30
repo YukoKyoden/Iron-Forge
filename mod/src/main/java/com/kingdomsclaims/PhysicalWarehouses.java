@@ -153,11 +153,11 @@ public final class PhysicalWarehouses {
     public static BlockPos nearest(ServerLevel w,UUID faction,BlockPos target,int maxDistance){
         BlockPos found=null;double best=(double)maxDistance*maxDistance;
         for(var e:WarehouseData.get(w).depots.entrySet()){
-            if(!e.getValue().faction.equals(faction))continue;
+            if(!SharedStockpile.owner(w.getServer(),e.getValue().faction).equals(SharedStockpile.owner(w.getServer(),faction)))continue;
             BlockPos pos=BlockPos.of(e.getKey());
             double distance=(double)(pos.getX()-target.getX())*(pos.getX()-target.getX())+
                 (double)(pos.getZ()-target.getZ())*(pos.getZ()-target.getZ());
-            if(distance<=best&&core(w,pos)){best=distance;found=pos;}
+            if(distance<=best&&core(w,pos)&&factionMatches(w,pos,e.getValue().faction)){best=distance;found=pos;}
         }
         return found;
     }
@@ -174,25 +174,6 @@ public final class PhysicalWarehouses {
 
         /** Pick one loaded, sufficiently stocked warehouse near the banner.
      * The old nearest-only choice ignored a stocked warehouse just a few blocks farther away. */
-    private static BlockPos stockedHeadquartersCore(ServerLevel w,UUID faction,BlockPos banner,Map<String,Integer> costs){
-        BlockPos best=null;double bestDist=192.0*192.0;
-        for(var e:WarehouseData.get(w).depots.entrySet()){
-            if(!SharedStockpile.owner(w.getServer(),faction).equals(SharedStockpile.owner(w.getServer(),e.getValue().faction)))continue;
-            BlockPos pos=BlockPos.of(e.getKey());
-            double dx=(double)pos.getX()-banner.getX(),dz=(double)pos.getZ()-banner.getZ();
-            double distance=dx*dx+dz*dz;
-            if(distance>bestDist||!core(w,pos))continue;
-            WarehouseData.Depot depot=data(w,pos,faction);
-            if(depot==null)continue;
-            importLegacy(w,pos,depot);
-            boolean enough=true;
-            for(var cost:costs.entrySet())if(cost.getValue()<0||depot.count(cost.getKey())<cost.getValue()){
-                enough=false;break;
-            }
-            if(enough){best=pos;bestDist=distance;}
-        }
-        return best;
-    }
     public static boolean hasHeadquartersWarehouse(net.minecraft.server.MinecraftServer server,UUID faction){
         Headquarters h=headquarters(server,faction);
         return h!=null&&nearest(h.world(),faction,h.banner(),192)!=null;
@@ -256,7 +237,7 @@ public final class PhysicalWarehouses {
         int accepted=stock(player.serverLevel()).add(faction,good,Math.min(amount,available),sharedCapacity(player.getServer(),faction));
         if(accepted<=0)return 0;
         int left=accepted;
-        for(ItemStack stack:player.getInventory().items)if(stack.is(item)&&left>0){int n=Math.min(left,stack.getCount());stack.shrink(n);left-=n;}
+        for(ItemStack stack:player.getInventory().items)if(stack.is(item)&&!stack.hasTag()&&left>0){int n=Math.min(left,stack.getCount());stack.shrink(n);left-=n;}
         player.getInventory().setChanged();return accepted;
     }
     public static int takeToPlayer(ServerPlayer player,UUID faction,BlockPos near,String good,int amount){
@@ -319,12 +300,12 @@ public final class PhysicalWarehouses {
         private static int playerRoom(Inventory inv,Item item){
         int room=0;for(ItemStack s:inv.items){
             if(s.isEmpty())room+=item.getDefaultInstance().getMaxStackSize();
-            else if(s.is(item))room+=Math.max(0,s.getMaxStackSize()-s.getCount());
+            else if(s.is(item)&&!s.hasTag())room+=Math.max(0,s.getMaxStackSize()-s.getCount());
         }return room;
     }
     private static void give(Inventory inv,Item item,int n){
         for(int pass=0;pass<2&&n>0;pass++)for(int i=0;i<inv.items.size()&&n>0;i++){
-            ItemStack s=inv.items.get(i);if(pass==0&&!s.is(item)||pass==1&&!s.isEmpty())continue;
+            ItemStack s=inv.items.get(i);if(pass==0&&(!s.is(item)||s.hasTag())||pass==1&&!s.isEmpty())continue;
             int take=Math.min(n,item.getDefaultInstance().getMaxStackSize()-(s.isEmpty()?0:s.getCount()));
             if(take<=0)continue;if(s.isEmpty())inv.items.set(i,new ItemStack(item,take));else s.grow(take);n-=take;
         }inv.setChanged();
