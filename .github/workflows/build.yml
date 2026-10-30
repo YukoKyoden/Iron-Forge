@@ -29,7 +29,7 @@ jobs:
           python3 tests/test_0426.py
       - name: Build and reobfuscate Forge 1.20.1 mod
         working-directory: mod
-        run: gradle --no-daemon --stacktrace clean build
+        run: gradle --no-daemon --stacktrace clean build ledgerRegression
       - name: Verify compiled JAR
         run: |
           test -f mod/build/libs/kingdomsclaims-0.4.26.jar

@@ -200,6 +200,7 @@ public final class KingdomService {
     public static String captureTown(MinecraftServer server,KingdomData.Banner b,UUID conqueror){
         KingdomData d=KingdomData.get(server);KingdomData.Town t=b.town==null?null:d.towns.get(b.town);
         if(t==null)return "Target isn't a town.";if(!d.kingdoms.containsKey(conqueror))return "Attacker kingdom doesn't exist.";
+        if(!SharedStockpile.get(server).mergeTown(t.id,conqueror))return "Captured stockpile exceeds the resource safety limit.";
         t.parentKingdom=conqueror;d.townMergerApprovals.remove(t.id);d.setDirty();return "Town "+t.name+" captured and placed under "+d.kingdoms.get(conqueror).name+" control. Its claims survive.";
     }
     public static String collapseKingdomBanner(MinecraftServer server,KingdomData.Banner b){return b.capital?defeat(server,b,"Capital conquered"):removeBanner(server,b);}
@@ -225,6 +226,7 @@ public final class KingdomService {
         long cost=annexCost(d,k.id,t.id);
         if(cost>Integer.MAX_VALUE||!PhysicalWarehouses.payHeadquarters(server,k.id,Map.of("IRON",(int)cost)))
             return "Annexation requires "+cost+" iron in your capital's physical warehouse.";
+        if(!SharedStockpile.get(server).mergeTown(t.id,k.id))return "Combined stockpile exceeds the resource safety limit.";
         t.parentKingdom=k.id;d.townMergerApprovals.remove(t.id);d.setDirty();
         return "Annexed "+t.name+" for "+cost+" iron (50% discount). Town identity and rally use retained.";
     }

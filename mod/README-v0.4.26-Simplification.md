@@ -20,7 +20,7 @@ Use a new world. This release replaces local depot inventories with one server-o
 - Lumber camp: at least eight tree logs and eight leaves. Wood output scales to logs (capped).
 - Barracks: sheltered beds and a crafting/smithing/fletching table. Each bed supports 50 stored troops, within the existing troop limit. Recruitment costs 3 iron and 18 wheat per troop.
 
-Selections cannot overlap, cross foreign/wilderness claims or exceed 32768 blocks/64 blocks per side. Cached surveys are invalidated on player edits/explosions. Surveys are distributed at most one per server second; unloaded/foreign regions do not contribute capacity or production. Production never catches up missed unloaded time. Remove obsolete registrations through Build.
+Selections cannot overlap, cross foreign/wilderness claims or exceed 32768 blocks/64 blocks per side. Cached surveys are invalidated on player edits/explosions. Surveys are distributed at most one per server second; foreign regions do not contribute capacity or production. Unloaded buildings keep their persisted capacity, while production pauses until their chunks are loaded. Production never catches up missed unloaded time. Remove obsolete registrations through Build.
 
 ## Economy and construction
 

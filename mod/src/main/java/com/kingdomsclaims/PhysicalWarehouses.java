@@ -121,9 +121,9 @@ public final class PhysicalWarehouses {
         for(ServerLevel level:server.getAllLevels())for(var entry:WarehouseData.get(level).depots.entrySet()){
             BlockPos pos=BlockPos.of(entry.getKey());var d=entry.getValue();
             if(!owner.equals(SharedStockpile.owner(server,d.faction)))continue;
-            // No forced chunk loads; capacity from unloaded cores is suspended until loaded.
-            if(!core(level,pos)||!factionMatches(level,pos,d.faction))continue;
-            int shelves=0;for(long id:d.shelves){BlockPos p=BlockPos.of(id);if(module(level,p)&&factionMatches(level,p,d.faction))shelves++;}
+            // Keep cached storage capacity in unloaded chunks; validate loaded blocks and current ownership.
+            if((level.hasChunkAt(pos)&&!core(level,pos))||!factionMatches(level,pos,d.faction))continue;
+            int shelves=0;for(long id:d.shelves){BlockPos p=BlockPos.of(id);if((!level.hasChunkAt(p)||module(level,p))&&factionMatches(level,p,d.faction))shelves++;}
             capacity+=(long)(shelves+1)*576;
         }
         capacity+=RegisteredBuildings.get(server).warehouseCapacity(server,owner);
@@ -202,9 +202,7 @@ public final class PhysicalWarehouses {
         if(!s.canPay(faction,goods)||9L*s.amount(faction,"GOLD")+s.amount(faction,"GOLD_NUGGETS")<wageNuggets)return false;
         var payroll=StockpileMath.goldPayment(s.amount(faction,"GOLD"),s.amount(faction,"GOLD_NUGGETS"),wageNuggets);
         if(payroll==null)return false;int nuggets=payroll.get("GOLD_NUGGETS"),ingots=payroll.get("GOLD"),change=payroll.get("CHANGE");
-        long after=(long)s.used(faction)-nuggets-ingots+change;
-        for(int cost:goods.values())after-=cost;
-        return after<=sharedCapacity(server,faction);
+        return (long)s.amount(faction,"GOLD_NUGGETS")-nuggets+change<=Integer.MAX_VALUE;
     }
     public static boolean payUpkeep(net.minecraft.server.MinecraftServer server,UUID faction,Map<String,Integer> goods,int wageNuggets){
         if(!canPayUpkeep(server,faction,goods,wageNuggets))return false;
@@ -212,9 +210,7 @@ public final class PhysicalWarehouses {
         var payroll=StockpileMath.goldPayment(s.amount(faction,"GOLD"),s.amount(faction,"GOLD_NUGGETS"),wageNuggets);
         if(payroll==null)return false;int nuggets=payroll.get("GOLD_NUGGETS"),ingots=payroll.get("GOLD"),change=payroll.get("CHANGE");
         Map<String,Integer> payment=new HashMap<>(goods);payment.merge("GOLD",ingots,Integer::sum);payment.merge("GOLD_NUGGETS",nuggets,Integer::sum);
-        if(!s.pay(faction,payment))return false;
-        if(change>0)s.add(faction,"GOLD_NUGGETS",change,Integer.MAX_VALUE);
-        return true;
+        return s.payWithGoldChange(faction,payment,change);
     }
 
     /** Read only loaded warehouse cores, bounded by the player's actual built warehouses. */
@@ -227,9 +223,14 @@ public final class PhysicalWarehouses {
     public static void importHeadquartersGold(net.minecraft.server.MinecraftServer server,UUID faction){}
     public static void importAvailable(ServerLevel w,UUID faction,BlockPos pos){}
     public static void importAll(net.minecraft.server.MinecraftServer server){}
+    private static boolean transferAllowed(ServerPlayer p,UUID faction,BlockPos near){
+        if(p.distanceToSqr(near.getX()+.5,near.getY()+.5,near.getZ()+.5)>96*96)return false;
+        var land=KingdomData.get(p.server);var k=land.kingdoms.get(SharedStockpile.owner(p.server,faction));var t=land.towns.get(faction);
+        return k!=null&&k.allowed(p.getUUID(),KingdomData.STORAGE)||t!=null&&t.allowed(p.getUUID(),KingdomData.STORAGE);
+    }
     /** Physical inventory transaction at the operating site (e.g. War Table). */
     public static int storeFromPlayer(ServerPlayer player,UUID faction,BlockPos near,String good,int amount){
-        Item item=EconomyService.goodsItem(good);if(item==null||amount<=0)return 0;
+        Item item=EconomyService.goodsItem(good);if(item==null||amount<=0||!transferAllowed(player,faction,near))return 0;
         // Physical deposits must be made at a genuine warehouse core.
         BlockPos pos=nearest(player.serverLevel(),faction,near,96);
         if(pos==null)return 0;
@@ -241,7 +242,7 @@ public final class PhysicalWarehouses {
         player.getInventory().setChanged();return accepted;
     }
     public static int takeToPlayer(ServerPlayer player,UUID faction,BlockPos near,String good,int amount){
-        Item item=EconomyService.goodsItem(good);if(item==null||amount<=0)return 0;
+        Item item=EconomyService.goodsItem(good);if(item==null||amount<=0||!transferAllowed(player,faction,near))return 0;
         if(nearest(player.serverLevel(),faction,near,96)==null)return 0;
         int n=Math.min(amount,Math.min(stock(player.serverLevel()).amount(faction,good),playerRoom(player.getInventory(),item)));
         if(n<=0||!stock(player.serverLevel()).pay(faction,Map.of(good,n)))return 0;

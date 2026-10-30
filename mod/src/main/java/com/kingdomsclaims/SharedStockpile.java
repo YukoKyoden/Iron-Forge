@@ -39,6 +39,14 @@ public final class SharedStockpile extends SavedData {
         }
         root.put("Factions",list);return root;
     }
+    /** Pool only an independent town's own balance, never its former parent's kingdom stock. */
+    public boolean mergeTown(UUID town,UUID kingdom){
+        var source=balances.get(town);if(source==null||town.equals(kingdom))return true;
+        var target=balances.computeIfAbsent(kingdom,k->new HashMap<>());
+        for(String g:OperationsData.GOODS)if((long)source.getOrDefault(g,0)+target.getOrDefault(g,0)>Integer.MAX_VALUE)return false;
+        for(String g:OperationsData.GOODS)target.merge(g,source.getOrDefault(g,0),Integer::sum);
+        balances.remove(town);setDirty();return true;
+    }
     public int amount(UUID owner,String good){owner=resolve(owner);return Math.max(0,balances.getOrDefault(owner,Map.of()).getOrDefault(good,0));}
     public int used(UUID owner){long sum=0;for(String good:OperationsData.GOODS)sum+=amount(owner,good);return (int)Math.min(Integer.MAX_VALUE,sum);}
     public int add(UUID owner,String good,int amount,int maxTotal){owner=resolve(owner);
@@ -51,6 +59,14 @@ public final class SharedStockpile extends SavedData {
     public boolean canPay(UUID owner,Map<String,Integer> required){owner=resolve(owner);if(owner==null)return false;
         for(var entry:required.entrySet())if(!validGood(entry.getKey())||entry.getValue()<0||amount(owner,entry.getKey())<entry.getValue())return false;
         return true;
+    }
+    public boolean payWithGoldChange(UUID id,Map<String,Integer> costs,int change){
+        UUID owner=resolve(id);if(change<0||change>8||!canPay(owner,costs))return false;
+        long after=(long)amount(owner,"GOLD_NUGGETS")-costs.getOrDefault("GOLD_NUGGETS",0)+change;
+        if(after>Integer.MAX_VALUE)return false;
+        if(!pay(owner,costs))return false;
+        // Change returns existing gold value, even if a warehouse was removed and storage is over capacity.
+        balances.computeIfAbsent(owner,k->new HashMap<>()).put("GOLD_NUGGETS",(int)after);setDirty();return true;
     }
     public boolean pay(UUID owner,Map<String,Integer> required){owner=resolve(owner);
         if(!canPay(owner,required))return false;

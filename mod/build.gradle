@@ -34,3 +34,9 @@ dependencies { minecraft 'net.minecraftforge:forge:1.20.1-47.4.28' }
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
 
 tasks.named('jar').configure { finalizedBy 'reobfJar' }
+
+tasks.register('ledgerRegression', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.kingdomsclaims.LedgerPersistenceTest'
+}

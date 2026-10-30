@@ -32,20 +32,21 @@ public final class RegisteredBuildings extends SavedData {
         for(Tag entry:root.getList("Buildings",Tag.TAG_COMPOUND)){
             CompoundTag t=(CompoundTag)entry;if(!t.hasUUID("Owner")||d.buildings.size()>=MAX_BUILDINGS)continue;
             Building b=new Building(t.getUUID("Owner"),t.getString("Dimension"),t.getString("Type"),BlockPos.of(t.getLong("Min")),BlockPos.of(t.getLong("Max")));
-            if(t.hasUUID("Id"))b.id=t.getUUID("Id");b.next=Math.max(0,t.getLong("Next"));d.buildings.add(b);
+            if(t.hasUUID("Id"))b.id=t.getUUID("Id");b.capacity=Math.max(0,t.getInt("Capacity"));b.dirty=t.getBoolean("Dirty");b.next=Math.max(0,t.getLong("Next"));d.buildings.add(b);
         }return d;
     }
     @Override public CompoundTag save(CompoundTag root){ListTag list=new ListTag();for(Building b:buildings){
         CompoundTag t=new CompoundTag();t.putUUID("Id",b.id);t.putUUID("Owner",b.owner);t.putString("Dimension",b.dimension);t.putString("Type",b.type);
-        t.putLong("Min",b.min.asLong());t.putLong("Max",b.max.asLong());t.putLong("Next",b.next);list.add(t);
+        t.putLong("Min",b.min.asLong());t.putLong("Max",b.max.asLong());t.putLong("Next",b.next);t.putInt("Capacity",b.capacity);t.putBoolean("Dirty",b.dirty);list.add(t);
     }root.put("Buildings",list);return root;}
     public static String type(String raw){String t=raw.toLowerCase(Locale.ROOT).replace('_',' ');return t.equals("lumber")?"lumber camp":t;}
     private static boolean known(String type){for(String t:TYPES)if(t.equalsIgnoreCase(type))return true;return false;}
     public static ServerLevel world(MinecraftServer server,String dim){for(ServerLevel w:server.getAllLevels())if(KingdomData.dim(w).equals(dim))return w;return null;}
-    public static boolean owned(ServerLevel w,Building b){
+    public static boolean owned(ServerLevel w,Building b){return ownsClaims(w,b,true);}
+    public static boolean ownsClaims(ServerLevel w,Building b,boolean loaded){
         KingdomData land=KingdomData.get(w.getServer());UUID owner=SharedStockpile.owner(w.getServer(),b.owner);
         for(int x=b.min.getX()>>4;x<=b.max.getX()>>4;x++)for(int z=b.min.getZ()>>4;z<=b.max.getZ()>>4;z++){
-            if(!w.hasChunk(x,z))return false;
+            if(loaded&&!w.hasChunk(x,z))return false;
             var f=BarracksService.faction(w,new BlockPos(x*16,b.min.getY(),z*16));
             if(f==null||!owner.equals(SharedStockpile.owner(w.getServer(),f.id())))return false;
         }return true;
@@ -114,7 +115,7 @@ public final class RegisteredBuildings extends SavedData {
             default->new Survey(0,"Unknown building type");
         };
     }
-    private boolean active(MinecraftServer s,Building b){ServerLevel w=world(s,b.dimension);return !b.dirty&&b.capacity>0&&w!=null&&owned(w,b);}
+    private boolean active(MinecraftServer s,Building b){ServerLevel w=world(s,b.dimension);return !b.dirty&&b.capacity>0&&w!=null&&ownsClaims(w,b,false);}
     public int sum(MinecraftServer s,UUID owner,String type){UUID id=SharedStockpile.owner(s,owner);long n=0;for(Building b:buildings)if(id.equals(SharedStockpile.owner(s,b.owner))&&b.type.equals(type)&&active(s,b))n+=b.capacity;return (int)Math.min(1_000_000_000L,n);}
     public int housing(MinecraftServer s,UUID owner){return sum(s,owner,"house");}
     public int warehouseCapacity(MinecraftServer s,UUID owner){return sum(s,owner,"warehouse");}
@@ -126,7 +127,8 @@ public final class RegisteredBuildings extends SavedData {
         if(buildings.isEmpty())return;long now=s.overworld().getGameTime();
         for(int n=0;n<buildings.size();n++){
             Building b=buildings.get((cursor++)%buildings.size());ServerLevel w=world(s,b.dimension);
-            if(w==null||!owned(w,b)){b.capacity=0;b.dirty=true;continue;}
+            if(w==null||!ownsClaims(w,b,false)){b.capacity=0;b.dirty=true;continue;}
+            if(!owned(w,b))continue;
             if(!b.dirty&&now<b.next)continue;
             boolean produce=now>=b.next;Survey survey=scan(w,b,produce&&b.type.equals("farm"));b.capacity=survey.capacity;b.dirty=false;
             if(produce&&b.capacity>0){int cap=PhysicalWarehouses.sharedCapacity(s,b.owner);SharedStockpile stock=SharedStockpile.get(s);
