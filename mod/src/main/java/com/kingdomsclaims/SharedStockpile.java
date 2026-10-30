@@ -25,7 +25,8 @@ public final class SharedStockpile extends SavedData {
             CompoundTag entry=(CompoundTag)tag;
             if(!entry.hasUUID("Id"))continue;
             Map<String,Integer> goods=new HashMap<>();CompoundTag stored=entry.getCompound("Goods");
-            for(String name:stored.getAllKeys())if(validGood(name))goods.put(name,Math.max(0,stored.getInt(name)));
+            // Keep saved specialty identifiers without requiring a running item registry (also preserves temporarily missing mod items).
+            for(String name:stored.getAllKeys())if(Arrays.asList(OperationsData.GOODS).contains(name)||(name.contains(":")&&net.minecraft.resources.ResourceLocation.tryParse(name)!=null))goods.put(name,Math.max(0,stored.getInt(name)));
             d.balances.put(entry.getUUID("Id"),goods);
         }
         return d;
