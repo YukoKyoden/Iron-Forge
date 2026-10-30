@@ -1,0 +1,1 @@
+{"type": "minecraft:crafting_shaped", "pattern": ["PPP", "IMI", "PCP"], "key": {"P": {"item": "minecraft:oak_planks"}, "I": {"item": "minecraft:iron_ingot"}, "M": {"item": "minecraft:map"}, "C": {"item": "minecraft:compass"}}, "result": {"item": "kingdomsclaims:war_table"}}

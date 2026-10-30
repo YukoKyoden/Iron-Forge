@@ -1,0 +1,16 @@
+{
+  "block.kingdomsclaims.kingdom_banner": "Kingdom Banner",
+  "block.kingdomsclaims.town_banner": "Town Banner",
+  "item.kingdomsclaims.kingdom_banner": "Kingdom Banner",
+  "item.kingdomsclaims.town_banner": "Town Banner",
+  "key.kingdomsclaims.territory": "Toggle Territory Survey",
+  "key.kingdomsclaims.townhall": "Open Town Hall",
+  "key.categories.kingdomsclaims": "Kingdoms & Claims",
+  "block.kingdomsclaims.barracks_controller": "Barracks Controller",
+  "entity.kingdomsclaims.militia": "Kingdom Soldier / Town Militia",
+  "block.kingdomsclaims.war_table": "War Table",
+  "item.kingdomsclaims.war_table": "War Table",
+  "block.kingdomsclaims.supply_depot": "Warehouse Core",
+  "block.kingdomsclaims.storage_expansion": "Warehouse Shelf",
+  "itemGroup.kingdomsclaims.main": "Kingdoms & Claims"
+}

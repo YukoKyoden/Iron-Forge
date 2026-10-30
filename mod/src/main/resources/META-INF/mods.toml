@@ -1,0 +1,23 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+[[mods]]
+modId="kingdomsclaims"
+version="0.4.25.2"
+displayName="Kingdoms & Claims"
+authors="Kingdom Warfare Project"
+description='''
+Kingdoms, claim plots, craftable Kingdom and Town Banners, land protection, expansion and capture hooks.
+'''
+[[dependencies.kingdomsclaims]]
+modId="forge"
+mandatory=true
+versionRange="[47.4.28,)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.kingdomsclaims]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1,1.20.2)"
+ordering="NONE"
+side="BOTH"

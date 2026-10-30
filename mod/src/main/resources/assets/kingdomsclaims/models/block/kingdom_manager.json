@@ -1,0 +1,1 @@
+{"parent": "minecraft:block/cube_bottom_top", "textures": {"top": "kingdomsclaims:block/kingdom_manager", "side": "minecraft:block/spruce_planks", "bottom": "minecraft:block/spruce_planks", "particle": "minecraft:block/spruce_planks"}}
