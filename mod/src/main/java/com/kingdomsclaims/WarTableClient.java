@@ -80,17 +80,17 @@ public final class WarTableClient {
         }
         @Override public void render(GuiGraphics g,int mouseX,int mouseY,float tick){
             renderBackground(g);int left=width/2-245,top=height/2-145;
-            g.fill(left,top,left+490,top+294,0xEE20272B);
-            g.drawCenteredString(font,"WAR TABLE | "+data.faction()+" ("+data.type()+")",width/2,top+10,0xE6C68E);
-            g.drawCenteredString(font,"Reserve "+data.reserves()+" | Assigned "+data.assigned()+" | Armies "+data.armies().size()+"/15",width/2,top+25,0xDDE1E0);
-            g.drawString(font,"Armies: click to select",left+12,top+67,0xDCD3C3);
+            MinecraftMenu.panel(g,left,top,left+490,top+294);
+            g.drawCenteredString(font,"WAR TABLE | "+data.faction()+" ("+data.type()+")",width/2,top+10,0xFF404040);
+            g.drawCenteredString(font,"Reserve "+data.reserves()+" | Assigned "+data.assigned()+" | Armies "+data.armies().size()+"/15",width/2,top+25,0xFF404040);
+            g.drawString(font,"Armies: click to select",left+12,top+67,0xFF404040);
             var a=current();
             if(a!=null){
-                g.drawString(font,"Current: "+a.x()+", "+a.z()+"   Troops: "+a.strength()+"+"+a.fielded(),left+279,top+67,0xF4DFA6);
-                g.drawString(font,a.marching()?"March to "+a.rallyX()+", "+a.rallyZ()+"  ETA: "+a.secondsRemaining()+"s":"Status: holding position",left+279,top+165,0xC1CFCB);
-            }else g.drawString(font,"Select an army above.",left+280,top+67,0xBBBBBB);
-            g.drawString(font,"Strategic marching: straight-line route; terrain navigation + battles come later.",left+12,top+246,0xADB4AF);
-            if(!data.message().isBlank())g.drawCenteredString(font,font.plainSubstrByWidth(data.message(),478),width/2,top+283,0xF1D28E);
+                g.drawString(font,"Current: "+a.x()+", "+a.z()+"   Troops: "+a.strength()+"+"+a.fielded(),left+279,top+67,0xFF404040);
+                g.drawString(font,a.marching()?"March to "+a.rallyX()+", "+a.rallyZ()+"  ETA: "+a.secondsRemaining()+"s":"Status: holding position",left+279,top+165,0xFF404040);
+            }else g.drawString(font,"Select an army above.",left+280,top+67,0xFF404040);
+            g.drawString(font,"Strategic marching: straight-line route; terrain navigation + battles come later.",left+12,top+246,0xFF404040);
+            if(!data.message().isBlank())g.drawCenteredString(font,font.plainSubstrByWidth(data.message(),478),width/2,top+283,0xFF404040);
             super.render(g,mouseX,mouseY,tick);
         }
         @Override public boolean isPauseScreen(){return false;}

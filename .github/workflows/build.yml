@@ -1,4 +1,4 @@
-name: Build Kingdoms and Claims v0.4.26
+name: Build Kingdoms and Claims v0.4.26.1
 on:
   push:
     branches: [kingdoms-claims-v0426-simplification]
@@ -23,8 +23,9 @@ jobs:
         working-directory: mod
         run: |
           mkdir -p build/regression
-          javac --release 17 -d build/regression src/main/java/com/kingdomsclaims/StockpileMath.java tests/StockpileMathTest.java src/main/java/com/kingdomsclaims/HousingMath.java tests/HousingMathTest.java
+          javac --release 17 -d build/regression src/main/java/com/kingdomsclaims/StockpileMath.java tests/StockpileMathTest.java src/main/java/com/kingdomsclaims/ArchitectInputGate.java tests/ArchitectInputGateTest.java src/main/java/com/kingdomsclaims/HousingMath.java tests/HousingMathTest.java
           java -cp build/regression StockpileMathTest
+          java -cp build/regression ArchitectInputGateTest
           java -cp build/regression HousingMathTest
           python3 tests/test_0426.py
       - name: Build and reobfuscate Forge 1.20.1 mod
@@ -32,11 +33,11 @@ jobs:
         run: gradle --no-daemon --stacktrace clean build ledgerRegression
       - name: Verify compiled JAR
         run: |
-          test -f mod/build/libs/kingdomsclaims-0.4.26.jar
-          jar tf mod/build/libs/kingdomsclaims-0.4.26.jar | grep -q META-INF/mods.toml
-          jar tf mod/build/libs/kingdomsclaims-0.4.26.jar | grep -q com/kingdomsclaims/RegisteredBuildings.class
+          test -f mod/build/libs/kingdomsclaims-0.4.26.1.jar
+          jar tf mod/build/libs/kingdomsclaims-0.4.26.1.jar | grep -q META-INF/mods.toml
+          jar tf mod/build/libs/kingdomsclaims-0.4.26.1.jar | grep -q com/kingdomsclaims/RegisteredBuildings.class
       - uses: actions/upload-artifact@v4
         with:
-          name: KingdomsClaims-v0.4.26-Forge-1.20.1
-          path: mod/build/libs/kingdomsclaims-0.4.26.jar
+          name: KingdomsClaims-v0.4.26.1-Forge-1.20.1
+          path: mod/build/libs/kingdomsclaims-0.4.26.1.jar
           if-no-files-found: error

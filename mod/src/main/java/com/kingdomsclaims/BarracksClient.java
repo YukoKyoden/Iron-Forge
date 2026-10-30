@@ -37,12 +37,12 @@ public final class BarracksClient {
         }
         @Override public void render(GuiGraphics g,int mouseX,int mouseY,float tick){
             renderBackground(g);int x=width/2-188,y=height/2-108;
-            g.fill(x,y,x+376,y+215,0xEF242A2B);
-            g.drawCenteredString(font,(data.type().equals("town")?"TOWN MILITIA BARRACKS":"KINGDOM SOLDIER BARRACKS"),width/2,y+10,0xE7CD94);
-            g.drawCenteredString(font,data.faction(),width/2,y+26,0xE8E8E8);
-            g.drawCenteredString(font,"Reserve: "+data.reserve()+"  |  In armies: "+data.assigned()+"  |  Capacity: "+data.maxReserve(),width/2,y+44,0xC6D2C0);
-            g.drawCenteredString(font,"NPCs near barracks: "+data.active()+" / "+data.maxPhysical(),width/2,y+57,0xB9BECA);
-            if(!data.message().isBlank())g.drawCenteredString(font,font.plainSubstrByWidth(data.message(),361),width/2,y+194,0xE6CB83);
+            MinecraftMenu.panel(g,x,y,x+376,y+215);
+            g.drawCenteredString(font,(data.type().equals("town")?"TOWN MILITIA BARRACKS":"KINGDOM SOLDIER BARRACKS"),width/2,y+10,0xFF404040);
+            g.drawCenteredString(font,data.faction(),width/2,y+26,0xFF404040);
+            g.drawCenteredString(font,"Reserve: "+data.reserve()+"  |  In armies: "+data.assigned()+"  |  Capacity: "+data.maxReserve(),width/2,y+44,0xFF404040);
+            g.drawCenteredString(font,"NPCs near barracks: "+data.active()+" / "+data.maxPhysical(),width/2,y+57,0xFF404040);
+            if(!data.message().isBlank())g.drawCenteredString(font,font.plainSubstrByWidth(data.message(),361),width/2,y+194,0xFF404040);
             super.render(g,mouseX,mouseY,tick);
         }
         @Override public boolean isPauseScreen(){return false;}

@@ -136,6 +136,7 @@ public final class WorldArchitectClient {
     }
     @SubscribeEvent public static void mouse(InputEvent.MouseButton.Pre event){
         if(active==null||Minecraft.getInstance().screen!=null)return;
+        if(event.getAction()==GLFW.GLFW_RELEASE){var mc=Minecraft.getInstance();mc.options.keyAttack.setDown(false);mc.options.keyUse.setDown(false);return;}
         if(event.getButton()==GLFW.GLFW_MOUSE_BUTTON_LEFT){
             event.setCanceled(true);
             if(event.getAction()==GLFW.GLFW_PRESS)construct();
@@ -224,16 +225,15 @@ public final class WorldArchitectClient {
         int cx=w/2,bottom=h-61;
         int visible=Math.min(materialCosts.size(),Math.max(1,(w-24)/42)),start=cx-visible*21;
         for(int i=0;i<visible;i++){var e=materialCosts.get(i);int xx=start+i*42,yy=bottom-82;
-            g.fill(xx,yy,xx+40,yy+40,0xE5303030);g.renderItem(new net.minecraft.world.item.ItemStack(e.getKey()),xx+12,yy+3);
-            g.drawCenteredString(mc.font,ResourceSlots.compact(e.getValue()),xx+20,yy+24,0xFFFFFFFF);
+            MinecraftMenu.inset(g,xx,yy,xx+40,yy+40);g.renderItem(new net.minecraft.world.item.ItemStack(e.getKey()),xx+12,yy+3);
+            g.drawCenteredString(mc.font,ResourceSlots.compact(e.getValue()),xx+20,yy+24,0xFF404040);
         }
-        g.fill(cx-150,bottom-28,cx+150,bottom+30,0xE5192932);
-        g.fill(cx-150,bottom-28,cx+150,bottom-26,0xFFE0BC7D);
-        g.drawCenteredString(mc.font,"ARCHITECT  /  "+mc.font.plainSubstrByWidth(active.name(),200),cx,bottom-21,0xFFFFE5AA);
-        g.drawCenteredString(mc.font,"R rotate  •  Shift+wheel height  •  M multi-place  •  Esc exit",cx,bottom-7,0xFFD9E7DF);
+        MinecraftMenu.panel(g,cx-180,bottom-45,cx+180,bottom+35);
+        g.drawCenteredString(mc.font,"ARCHITECT  /  "+mc.font.plainSubstrByWidth(active.name(),200),cx,bottom-21,0xFF404040);
+        g.drawCenteredString(mc.font,"R rotate  •  Shift+wheel height  •  M multi-place  •  Esc exit",cx,bottom-7,0xFF404040);
         String status=waiting?"Checking...":anchor==null?"Aim at a solid block":(emptyPreviewSpace()?"PREVIEW CLEAR — server checks claims and materials":"BLOCKED — claim the land or clear existing blocks");
-        g.drawCenteredString(mc.font,status,cx,bottom+7,anchor!=null&&emptyPreviewSpace()?0xFF94ECC9:0xFFFFB5A4);
-        g.drawCenteredString(mc.font,repeatPlacement?"MULTI-PLACE ON — click repeatedly to build copies":"ONE BUILD — press M for multiple copies",cx,bottom-35,repeatPlacement?0xFF98EACC:0xFFFFCFA1);
-        if(!notice.isBlank())g.drawCenteredString(mc.font,mc.font.plainSubstrByWidth(notice,350),cx,bottom+20,0xFFFFDDA3);
+        g.drawCenteredString(mc.font,status,cx,bottom+7,anchor!=null&&emptyPreviewSpace()?0xFF246B26:0xFFA01919);
+        g.drawCenteredString(mc.font,repeatPlacement?"MULTI-PLACE ON — click repeatedly to build copies":"ONE BUILD — press M for multiple copies",cx,bottom-35,repeatPlacement?0xFF246B26:0xFF404040);
+        if(!notice.isBlank())g.drawCenteredString(mc.font,mc.font.plainSubstrByWidth(notice,350),cx,bottom+20,0xFF404040);
     }
 }

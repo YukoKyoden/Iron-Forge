@@ -231,26 +231,25 @@ public final class TownHallClient {
         @Override public void render(GuiGraphics g,int mx,int my,float tick){
             renderBackground(g);
             int left=x(),top=y(),wide=w(),high=h();
-            g.fill(left,top,left+wide,top+high,0xEE222B26);
-            g.renderOutline(left,top,wide,high,0xFF82987A);
-            g.drawString(font,"KINGDOMS & CLAIMS",left+11,top+10,0xFFE9D9AA,false);
+            MinecraftMenu.panel(g,left,top,left+wide,top+high);
+            g.drawString(font,"KINGDOMS & CLAIMS",left+11,top+10,0xFF404040,false);
             if(!pendingAction.isEmpty()){
-                g.fill(left+8,top+80,left+wide-8,top+166,0xFF443B30);
+                MinecraftMenu.panel(g,left+8,top+80,left+wide-8,top+166);
                 g.renderOutline(left+8,top+80,wide-16,86,0xFFDFB67C);
-                g.drawString(font,"CONFIRM ACTION",left+20,top+94,0xFFFFD68B,false);
-                g.drawWordWrap(font,Component.literal(pendingDescription),left+20,top+117,wide-40,0xFFEDE7D9);
-                g.drawString(font,"You can cancel safely.",left+20,top+151,0xFFCCD3C6,false);
+                g.drawString(font,"CONFIRM ACTION",left+20,top+94,0xFF404040,false);
+                g.drawWordWrap(font,Component.literal(pendingDescription),left+20,top+117,wide-40,0xFF404040);
+                g.drawString(font,"You can cancel safely.",left+20,top+151,0xFF404040,false);
             }else if(townDirectory){
-                g.drawString(font,"Your towns · click to select · scroll to see more",left+13,top+77,0xFFE7E9DE,false);
-                g.drawString(font,Math.min(snapshot.towns().size(),townOffset+TOWN_ROWS)+" / "+snapshot.towns().size(),left+wide-64,top+242,0xFFD4D5CA,false);
-                if(snapshot.towns().isEmpty())g.drawString(font,"No towns yet. Create one from Overview.",left+13,top+112,0xFFE7E9DE,false);
+                g.drawString(font,"Your towns · click to select · scroll to see more",left+13,top+77,0xFF404040,false);
+                g.drawString(font,Math.min(snapshot.towns().size(),townOffset+TOWN_ROWS)+" / "+snapshot.towns().size(),left+wide-64,top+242,0xFF404040,false);
+                if(snapshot.towns().isEmpty())g.drawString(font,"No towns yet. Create one from Overview.",left+13,top+112,0xFF404040,false);
             }else{
                 TownHallNetwork.TownInfo t=active();
                 String name=tab==5?
                     (snapshot.kingdom().name().isEmpty()?"No kingdom":snapshot.kingdom().name()+" | "+snapshot.kingdom().chunks()+" chunks | "+snapshot.kingdom().treasury()+" iron"):
                     (t==null?"No town selected":t.name()+" | "+t.chunks()+"/81 chunks | "+t.members()+" members");
                 if(name.length()>53)name=name.substring(0,50)+"...";
-                g.drawString(font,name,left+152,top+33,0xFFE7E9DE,false);
+                g.drawString(font,name,left+152,top+33,0xFF404040,false);
                 int cy=top+86;
                 switch(tab){
                     case 0->{
@@ -302,7 +301,7 @@ public final class TownHallClient {
             }
             if(!note.isEmpty()){
                 String message=note.length()>77?note.substring(0,74)+"...":note;
-                g.drawString(font,message,left+12,top+high-19,0xFFA9E6B8,false);
+                g.drawString(font,message,left+12,top+high-19,0xFF246B26,false);
             }
             super.render(g,mx,my,tick);
         }

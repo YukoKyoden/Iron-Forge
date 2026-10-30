@@ -129,37 +129,37 @@ public final class DistrictClient {
         }
         private void sidebar(GuiGraphics g){
             int sx=sideX(),inner=sx+8,sw=width-inner-10;
-            g.fill(sx,0,width,height,0xFF212B2D);g.fill(sx,0,sx+2,height,0xFFB9A274);
-            g.drawString(font,"KINGDOM MANAGER",inner,9,0xFFFFDB91,false);
-            g.drawString(font,clip(data.faction()+" ("+data.factionType()+")",sw),inner,25,0xFFF0EEE4,false);
+            MinecraftMenu.panel(g,sx,0,width,height);
+            g.drawString(font,"KINGDOM MANAGER",inner,9,0xFF404040,false);
+            g.drawString(font,clip(data.faction()+" ("+data.factionType()+")",sw),inner,25,0xFF404040,false);
             if(economy){
-                g.drawString(font,"GOLD INGOTS  "+data.gold(),inner,80,0xFFFFDB91,false);
-                g.drawString(font,"Iron "+data.iron()+"    Wheat "+data.wheat(),inner,96,0xFFEDE6CF,false);
-                g.drawString(font,"Population "+data.population()+" / "+data.capacity(),inner,113,0xFFB6E0D5,false);
-                g.drawString(font,"Jobs "+data.jobs()+"    Food capacity "+data.food(),inner,128,0xFFB6E0D5,false);
-                g.drawString(font,"Taxes "+data.tax()+"%  (next "+data.income()+" gold nuggets)",inner,143,0xFFFFDB91,false);
+                g.drawString(font,"GOLD INGOTS  "+data.gold(),inner,80,0xFF404040,false);
+                g.drawString(font,"Iron "+data.iron()+"    Wheat "+data.wheat(),inner,96,0xFF404040,false);
+                g.drawString(font,"Population "+data.population()+" / "+data.capacity(),inner,113,0xFF246B26,false);
+                g.drawString(font,"Jobs "+data.jobs()+"    Food capacity "+data.food(),inner,128,0xFF246B26,false);
+                g.drawString(font,"Taxes "+data.tax()+"%  (next "+data.income()+" gold nuggets)",inner,143,0xFF404040,false);
                 if(height>343){
-                    g.drawString(font,"Wages / 5m: "+data.payroll()+" gold nuggets",inner,320,0xFFE1E9E2,false);
-                    g.drawString(font,"Next charge: "+data.seconds()/60+":"+String.format("%02d",data.seconds()%60),inner,334,0xFFE1E9E2,false);
-                    g.drawString(font,"Last funded: "+(data.funded()?"YES":"NO")+"    Happiness: "+data.happy()+"%",inner,348,data.funded()?0xFF94DCAA:0xFFFF9292,false);
+                    g.drawString(font,"Wages / 5m: "+data.payroll()+" gold nuggets",inner,320,0xFF404040,false);
+                    g.drawString(font,"Next charge: "+data.seconds()/60+":"+String.format("%02d",data.seconds()%60),inner,334,0xFF404040,false);
+                    g.drawString(font,"Last funded: "+(data.funded()?"YES":"NO")+"    Happiness: "+data.happy()+"%",inner,348,data.funded()?0xFF246B26:0xFFA01919,false);
                 }
             }else{
-                g.drawString(font,"Name district / paint owned chunks",inner,72,0xFFC5D8C9,false);
-                g.drawString(font,"Painted: "+brush.size()+" / 128",inner,236,0xFFFFDA9C,false);
-                if(height>290)g.drawString(font,"Districts: "+data.districts().size()+" / 48",inner,245,0xFFBED8C5,false);
+                g.drawString(font,"Name district / paint owned chunks",inner,72,0xFF404040,false);
+                g.drawString(font,"Painted: "+brush.size()+" / 128",inner,236,0xFF404040,false);
+                if(height>290)g.drawString(font,"Districts: "+data.districts().size()+" / 48",inner,245,0xFF404040,false);
             }
         }
         @Override public void render(GuiGraphics g,int mx,int my,float partial){
-            renderBackground(g);g.fill(0,0,width,height,0xFF122023);drawMap(g);sidebar(g);
-            g.drawString(font,"DISTRICT ZONING",left()+3,3,0xFFFAE8C4,false);
-            g.drawString(font,"Click/drag: paint chunks | Right-drag: pan | Wheel: zoom",left()+4,height-32,0xFFE7D6B5,false);
-            g.drawString(font,"Blue residential / Gold commerce / Red industry / Green farms",left()+4,height-19,0xFFBFC9BF,false);
+            renderBackground(g);MinecraftMenu.panel(g,0,0,width,height);drawMap(g);sidebar(g);
+            g.drawString(font,"DISTRICT ZONING",left()+3,3,0xFF404040,false);
+            g.drawString(font,"Click/drag: paint chunks | Right-drag: pan | Wheel: zoom",left()+4,height-32,0xFF404040,false);
+            g.drawString(font,"Blue residential / Gold commerce / Red industry / Green farms",left()+4,height-19,0xFF404040,false);
             if(mapHit(mx,my)){
                 int cx=(int)Math.floor(viewX+(mx-midX())/zoom),cz=(int)Math.floor(viewZ+(my-midY())/zoom);
                 g.drawString(font,"Chunk "+cx+", "+cz,left()+6,top()+6,0xFFFFFFFF,true);
             }
             String msg=lastMessage.isEmpty()?data.message():lastMessage;
-            if(!msg.isBlank())g.drawCenteredString(font,clip(msg,Math.max(100,right()-14)),(left()+right())/2,height-7,0xFFFFD7A2);
+            if(!msg.isBlank())g.drawCenteredString(font,clip(msg,Math.max(100,right()-14)),(left()+right())/2,height-7,0xFF404040);
             super.render(g,mx,my,partial);
             int sx=sideX()+8,sw=width-sx-10,half=(sw-6)/2;
             outline(g,economy?sx+half+6:sx,48,economy?sw-half-6:half,20,0xFFFFFFFF);

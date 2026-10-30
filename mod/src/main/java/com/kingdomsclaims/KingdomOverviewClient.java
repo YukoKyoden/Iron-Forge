@@ -237,10 +237,10 @@ public final class KingdomOverviewClient {
         private BlockPos hoverBlock=null;
         private static final int[] ZONE_COLORS={0xFF62BBF1,0xFFFFCA6A,0xFFE99C85,0xFF95D77A};
         // These are original HUD colors; no Kingdoms and Castles artwork is bundled.
-        private static final int HUD_PANEL=0xE41A2930, HUD_BORDER=0xFF72847D;
-        private static final int HUD_GOLD=0xFFE8C57C, HUD_TEXT=0xFFECE5D3;
+        private static final int HUD_PANEL=0xFFC6C6C6, HUD_BORDER=0xFF555555;
+        private static final int HUD_GOLD=0xFF404040, HUD_TEXT=0xFF404040;
 
-        /** Dark wood/stone styled strategy buttons rather than vanilla gray GUI buttons. */
+        /** Native Minecraft buttons honor vanilla textures and resource packs. */
         private static final class StrategyButton extends Button {
             private final int accent;
             StrategyButton(String label,int bx,int by,int bw,int bh,int accent,Runnable click) {
@@ -248,20 +248,9 @@ public final class KingdomOverviewClient {
                 this.accent=accent;
             }
             @Override protected void renderWidget(GuiGraphics g,int mouseX,int mouseY,float partialTick) {
-                int bx=getX(),by=getY(),bw=getWidth(),bh=getHeight();
-                boolean hot=isHoveredOrFocused();
-                g.fill(bx,by,bx+bw,by+bh,hot?0xF0445555:0xEB23313A);
-                g.fill(bx,by,bx+bw,by+2,hot?0xFFF6D995:accent);
-                g.fill(bx,by+bh-1,bx+bw,by+bh,0xFF718079);
-                g.fill(bx,by,bx+1,by+bh,0xFF627773);
-                g.fill(bx+bw-1,by,bx+bw,by+bh,0xFF627773);
-                String text=getMessage().getString();
-                int maxWidth=Math.max(10,bw-8);
-                while(text.length()>1 && Minecraft.getInstance().font.width(text)>maxWidth)
-                    text=text.substring(0,text.length()-2)+"…";
-                g.drawCenteredString(Minecraft.getInstance().font,text,bx+bw/2,by+(bh-8)/2,
-                    active?(hot?0xFFFFFFFF:0xFFE9E2CF):0xFF7E8A89);
+                super.renderWidget(g,mouseX,mouseY,partialTick);
             }
+
         }
 
 
@@ -448,30 +437,30 @@ public final class KingdomOverviewClient {
                 String folder=index==0?"All builds":blueprintFolders.get(index-1);
                 int n=index==0?blueprints.size():(int)blueprints.stream().filter(p->p.folder().equalsIgnoreCase(folder)).count();
                 boolean hot=folderFilterIndex==index;
-                g.fill(x,y,x+w,y+LIBRARY_ROW-2,hot?0xEE465A55:0xDD23313A);
+                MinecraftMenu.selection(g,x,y,x+w,y+LIBRARY_ROW-2,hot);
                 if(hot)g.fill(x,y,x+3,y+LIBRARY_ROW-2,HUD_GOLD);
                 String title=font.plainSubstrByWidth("▸ "+folder,w-57);
-                g.drawString(font,title,x+7,y+6,hot?0xFFFFE2AA:HUD_TEXT,false);
-                g.drawString(font,n+"  ›",x+w-37,y+6,0xFFB3CBBC,false);
+                g.drawString(font,title,x+7,y+6,hot?0xFF404040:HUD_TEXT,false);
+                g.drawString(font,n+"  ›",x+w-37,y+6,0xFF404040,false);
             }
-            if(count>rows)g.drawString(font,"Scroll folders  ("+(folderScroll+1)+"–"+Math.min(count,folderScroll+rows)+" / "+count+")",x,LIBRARY_TOP+rows*LIBRARY_ROW+1,0xFFADC1B5,false);
+            if(count>rows)g.drawString(font,"Scroll folders  ("+(folderScroll+1)+"–"+Math.min(count,folderScroll+rows)+" / "+count+")",x,LIBRARY_TOP+rows*LIBRARY_ROW+1,0xFF404040,false);
             // Submenu opens adjacent to folders, towards the center of the 3D view.
             var plans=visibleBlueprints();int px=flyoutX(),pw=flyoutWidth(),py=flyoutY(),visible=planRowsVisible();
             buildScroll=Math.max(0,Math.min(buildScroll,Math.max(0,plans.size()-visible)));
-            g.fill(px,py-5,px+pw,py+37+visible*26,0xF01A2930);
+            MinecraftMenu.panel(g,px,py-5,px+pw,py+37+visible*26);
             g.fill(px,py-5,px+pw,py-3,HUD_GOLD);
             g.drawString(font,font.plainSubstrByWidth(filteredFolder(),pw-14),px+8,py+3,HUD_GOLD,false);
-            g.drawString(font,"Click: place   Right-click: select",px+8,py+18,0xFFB6D3BE,false);
+            g.drawString(font,"Click: place   Right-click: select",px+8,py+18,0xFF404040,false);
             if(plans.isEmpty())g.drawString(font,"No saved designs in this folder",px+8,py+43,HUD_TEXT,false);
             for(int i=0;i<visible&&i+buildScroll<plans.size();i++){
                 int idx=i+buildScroll,yy=py+37+i*26;
                 var plan=plans.get(idx);
                 boolean hot=mx>=px+4&&mx<px+pw-4&&my>=yy&&my<yy+24;
                 boolean selected=idx==blueprintIndex;
-                g.fill(px+4,yy,px+pw-4,yy+24,hot?0xFF4D5F55:selected?0xFF374942:0xEA26363B);
+                MinecraftMenu.selection(g,px+4,yy,px+pw-4,yy+24,hot||selected);
                 if(selected)g.fill(px+4,yy,px+7,yy+24,HUD_GOLD);
-                g.drawString(font,font.plainSubstrByWidth(plan.name(),pw-22),px+11,yy+3,hot?0xFFFFE6A8:HUD_TEXT,false);
-                g.drawString(font,""+plan.width()+"×"+plan.depth()+"  •  "+plan.blocks()+" blocks  •  "+plan.housing()+" residents",px+11,yy+14,0xFFB6D0BF,false);
+                g.drawString(font,font.plainSubstrByWidth(plan.name(),pw-22),px+11,yy+3,hot?0xFF404040:HUD_TEXT,false);
+                g.drawString(font,""+plan.width()+"×"+plan.depth()+"  •  "+plan.blocks()+" blocks  •  "+plan.housing()+" residents",px+11,yy+14,0xFF404040,false);
             }
             if(plans.size()>visible)g.drawString(font,"Scroll for "+(plans.size()-visible)+" more designs",px+8,py+37+visible*26-11,HUD_GOLD,false);
         }
@@ -879,26 +868,26 @@ public final class KingdomOverviewClient {
             lastMouseX=mx;lastMouseY=my;
             hoverBlock=(zoningMode||pane==Pane.CLAIMS)&&!overHud(mx,my)?pickSurface(mx,my):null;
             // Identity at top left, a small navigation rail beneath it, and one contextual right dock.
-            g.fill(7,7,226,49,HUD_PANEL);
+            MinecraftMenu.panel(g,7,7,226,49);
             g.fill(7,7,226,9,HUD_GOLD);
             g.drawString(font,"KINGDOMS & CLAIMS",15,15,HUD_GOLD,false);
             g.drawString(font,font.plainSubstrByWidth(data.faction(),198),15,31,HUD_TEXT,false);
             int rightX=Math.max(232,width-197);
-            g.fill(rightX,7,width-7,35,HUD_PANEL);
+            MinecraftMenu.panel(g,rightX,7,width-7,35);
             g.drawString(font,showHelp?"H  HIDE CONTROLS":"H  CONTROLS",rightX+8,17,HUD_GOLD,false);
             if(showHelp){
-                g.fill(rightX,37,width-7,91,HUD_PANEL);
+                MinecraftMenu.panel(g,rightX,37,width-7,91);
                 g.drawString(font,"WASD move  •  Q/E turn",rightX+7,45,HUD_TEXT,false);
                 g.drawString(font,"Wheel zoom  •  right drag pan",rightX+7,58,HUD_TEXT,false);
                 g.drawString(font,"Middle drag tilt",rightX+7,71,HUD_TEXT,false);
             }
             int sw=sidebarWidth();
-            g.fill(7,55,18+sw,200,0xE71B2B31);
+            MinecraftMenu.panel(g,7,55,18+sw,200);
             g.fill(7,55,18+sw,57,HUD_GOLD);
             g.drawString(font,"KINGDOM TOOLS",15,59,HUD_GOLD,false);
             if(pane!=Pane.NONE){
                 int px=panelX(),pw=panelWidth(),inner=px+12,w=pw-24;
-                g.fill(px,55,px+pw,height-11,0xF01A2930);
+                MinecraftMenu.panel(g,px,55,px+pw,height-11);
                 g.fill(px,55,px+pw,57,HUD_GOLD);
                 String title=switch(pane){
                     case ZONING -> "ZONE LAND";
@@ -909,7 +898,7 @@ public final class KingdomOverviewClient {
                     default -> "";
                 };
                 g.drawString(font,title,inner,69,HUD_GOLD,false);
-                g.drawString(font,"Esc closes this panel",inner,88,0xFFB9C6C2,false);
+                g.drawString(font,"Esc closes this panel",inner,88,0xFF404040,false);
                 if(pane==Pane.CLAIMS){
                     g.drawString(font,"1. Select an unclaimed chunk",inner,151,HUD_TEXT,false);
                     g.drawString(font,"2. Confirm purchase below",inner,171,HUD_TEXT,false);
@@ -923,7 +912,7 @@ public final class KingdomOverviewClient {
                     g.drawString(font,"1. Choose land use",inner,104,HUD_TEXT,false);
                     g.drawString(font,"2. Name district",inner,184,HUD_TEXT,false);
                     if(height>=347)g.drawString(font,"3. Click / drag on owned land",inner,317,HUD_TEXT,false);
-                    if(height>=365)g.drawString(font,"Selected: "+brushedChunks.size()+" / "+DistrictData.MAX_PAINT+" chunks",inner,333,0xFFB7E0B9,false);
+                    if(height>=365)g.drawString(font,"Selected: "+brushedChunks.size()+" / "+DistrictData.MAX_PAINT+" chunks",inner,333,0xFF246B26,false);
                     if(height>=384)g.drawString(font,"4. Create or expand above",inner,350,HUD_TEXT,false);
                 } else if(pane==Pane.DISTRICTS){
                     g.drawString(font,data.districts().size()+" districts • choose one",inner,101,HUD_TEXT,false);
@@ -949,10 +938,10 @@ public final class KingdomOverviewClient {
                 int cx=hoverBlock.getX()>>4,cz=hoverBlock.getZ()>>4,idx=tileIndex(cx,cz);
                 boolean own=idx>=0&&data.claims()[idx]==1;
                 int infoX=10+sidebarWidth()+15,infoY=54;
-                g.fill(infoX,infoY,infoX+165,infoY+39,0xE41A2930);
+                MinecraftMenu.panel(g,infoX,infoY,infoX+165,infoY+39);
                 g.drawString(font,"CHUNK "+cx+", "+cz,infoX+8,infoY+7,HUD_GOLD,false);
                 g.drawString(font,own?"Owned • click to select":"Unclaimed • cannot zone",infoX+8,infoY+22,
-                    own?0xFFB9E0AC:0xFFF0AAA1,false);
+                    own?0xFF246B26:0xFFA01919,false);
             }
             if(showClaims&&data.markers()!=null&&!data.markers().isEmpty()){
                 int bx=10+sidebarWidth()+15;
@@ -961,16 +950,16 @@ public final class KingdomOverviewClient {
                 for(DistrictNetwork.Marker m:data.markers()){
                     if(shown>=4)break;
                     if(Math.abs(m.x()-x)>160||Math.abs(m.z()-z)>160)continue;
-                    g.fill(bx,by+shown*13,bx+155,by+shown*13+12,0xC81B2B31);
-                    g.drawString(font,(m.kind().equals("WAREHOUSE")?"[W] Warehouse":"[+] "+m.kind())+"  "+(m.x()>>4)+","+(m.z()>>4),bx+3,by+2+shown*13,0xFFE0CF9C,false);
+                    MinecraftMenu.panel(g,bx,by+shown*13,bx+155,by+shown*13+12);
+                    g.drawString(font,(m.kind().equals("WAREHOUSE")?"[W] Warehouse":"[+] "+m.kind())+"  "+(m.x()>>4)+","+(m.z()>>4),bx+3,by+2+shown*13,0xFF404040,false);
                     shown++;
                 }
             }
             if(!alert.isBlank()){
                 int ay=height-24,base=10+sidebarWidth()+15;
                 int textWidth=Math.max(100,width-base-(pane==Pane.NONE?10:panelWidth()+20));
-                g.fill(base-4,ay-4,Math.min(width-9,base+textWidth+8),ay+14,0xE51A2930);
-                g.drawString(font,font.plainSubstrByWidth(alert,textWidth),base,ay,0xFFFFE6AD,false);
+                MinecraftMenu.panel(g,base-4,ay-4,Math.min(width-9,base+textWidth+8),ay+14);
+                g.drawString(font,font.plainSubstrByWidth(alert,textWidth),base,ay,0xFF404040,false);
             }
             super.render(g,mx,my,partialTick);
             renderBuildLibrary(g,mx,my);

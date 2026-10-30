@@ -235,7 +235,7 @@ public final class WarMapClient {
         }
         private void drawMap(GuiGraphics g){
             int left=mapLeft(),top=mapTop(),right=mapRight(),bottom=mapBottom();
-            g.fill(left-2,top-2,right+2,bottom+2,0xFF706B55);
+            MinecraftMenu.inset(g,left-2,top-2,right+2,bottom+2);
             g.fill(left,top,right,bottom,0xFF1E2828);
             g.enableScissor(left,top,right,bottom);
             int n=WarMapData.SIZE,sub=WarMapData.SUB;
@@ -305,77 +305,76 @@ public final class WarMapClient {
         }
         private void drawSidebar(GuiGraphics g){
             int sx=sideX(),inner=sx+7,sw=width-inner-8;
-            g.fill(sx,0,width,height,0xFF20282B);
-            g.fill(sx,0,sx+2,height,0xFF6B6253);
-            g.drawString(font,treasury?"LOCAL WAREHOUSE":missions?"KINGDOM OPERATIONS":"WAR TABLE",inner,10,0xFFE8CD8B,false);
-            g.drawString(font,clip(data.faction()+" ("+data.type()+")",sw-20),inner,26,0xFFECECE7,false);
-            g.drawString(font,"Reserve "+data.reserves()+"  /  Assigned "+data.assigned(),inner,38,0xFFB5D0BA,false);
+            MinecraftMenu.panel(g,sx,0,width,height);
+            g.drawString(font,treasury?"LOCAL WAREHOUSE":missions?"KINGDOM OPERATIONS":"WAR TABLE",inner,10,0xFF404040,false);
+            g.drawString(font,clip(data.faction()+" ("+data.type()+")",sw-20),inner,26,0xFF404040,false);
+            g.drawString(font,"Reserve "+data.reserves()+"  /  Assigned "+data.assigned(),inner,38,0xFF404040,false);
             if(treasury){
-                g.drawString(font,"NEARBY WAREHOUSE STOCK",inner,98,0xFFFFD789,false);
-                if(operations==null){g.drawString(font,"Fetching warehouse balances...",inner,112,0xFFCDD1CE,false);return;}
+                g.drawString(font,"NEARBY WAREHOUSE STOCK",inner,98,0xFF404040,false);
+                if(operations==null){g.drawString(font,"Fetching warehouse balances...",inner,112,0xFF404040,false);return;}
                 int[] supplies=operations.warehouse();
-                g.drawString(font,"Iron:  "+supplies[0],inner,112,0xFFE9E5DD,false);
-                g.drawString(font,"Wheat: "+supplies[3],inner+sw/2,112,0xFFE9E5DD,false);
+                g.drawString(font,"Iron:  "+supplies[0],inner,112,0xFF404040,false);
+                g.drawString(font,"Wheat: "+supplies[3],inner+sw/2,112,0xFF404040,false);
                 int infoY=Math.max(290,Math.min(height-155,325));
                 if(infoY+122<height){
-                    g.fill(inner,infoY,width-8,infoY+123,0xFF34403F);
-                    g.drawString(font,"FIVE-MINUTE UPKEEP",inner+6,infoY+8,0xFFFFD789,false);
-                    g.drawString(font,"Costs: "+operations.ironDue()+" iron + "+operations.wheatDue()+" wheat",inner+6,infoY+22,0xFFE6F0E6,false);
-                    g.drawString(font,"Settlement size: "+operations.population(),inner+6,infoY+36,0xFFC8D8D1,false);
+                    MinecraftMenu.inset(g,inner,infoY,width-8,infoY+123);
+                    g.drawString(font,"FIVE-MINUTE UPKEEP",inner+6,infoY+8,0xFF404040,false);
+                    g.drawString(font,"Costs: "+operations.ironDue()+" iron + "+operations.wheatDue()+" wheat",inner+6,infoY+22,0xFF404040,false);
+                    g.drawString(font,"Settlement size: "+operations.population(),inner+6,infoY+36,0xFF404040,false);
                     int left=Math.max(0,operations.secondsLeft());
-                    g.drawString(font,(operations.funded()?"Next charge: ":"Awaiting payment: ")+(left/60)+":"+String.format("%02d",left%60),inner+6,infoY+49,0xFFF1E6CE,false);
-                    g.drawString(font,operations.funded()?"Last charge: PAID / INITIAL":"Last charge: UNPAID",inner+6,infoY+63,operations.funded()?0xFF97E0A6:0xFFFF8C83,false);
-                    g.drawString(font,operations.canPayNext()?"Next charge: COVERED":"Next charge: INSUFFICIENT",inner+6,infoY+77,operations.canPayNext()?0xFF97E0A6:0xFFFF8C83,false);
-                    g.drawString(font,"Successful charges: "+operations.paidCycles(),inner+6,infoY+91,0xFFC8D8D1,false);
-                    g.drawString(font,clip(operations.upkeepStatus(),sw-16),inner+6,infoY+104,operations.funded()?0xFF97E0A6:0xFFFFC78D,false);
+                    g.drawString(font,(operations.funded()?"Next charge: ":"Awaiting payment: ")+(left/60)+":"+String.format("%02d",left%60),inner+6,infoY+49,0xFF404040,false);
+                    g.drawString(font,operations.funded()?"Last charge: PAID / INITIAL":"Last charge: UNPAID",inner+6,infoY+63,operations.funded()?0xFF246B26:0xFFA01919,false);
+                    g.drawString(font,operations.canPayNext()?"Next charge: COVERED":"Next charge: INSUFFICIENT",inner+6,infoY+77,operations.canPayNext()?0xFF246B26:0xFFA01919,false);
+                    g.drawString(font,"Successful charges: "+operations.paidCycles(),inner+6,infoY+91,0xFF404040,false);
+                    g.drawString(font,clip(operations.upkeepStatus(),sw-16),inner+6,infoY+104,operations.funded()?0xFF246B26:0xFFA01919,false);
                 }
                 if(!data.message().isBlank()){
                     int my=Math.min(height-43,infoY+136);
-                    g.drawString(font,clip(data.message(),sw-8),inner,my,0xFFFFD789,false);
-                    if(data.message().length()>35)g.drawString(font,clip(data.message().substring(Math.min(35,data.message().length())),sw-8),inner,my+12,0xFFFFD789,false);
+                    g.drawString(font,clip(data.message(),sw-8),inner,my,0xFF404040,false);
+                    if(data.message().length()>35)g.drawString(font,clip(data.message().substring(Math.min(35,data.message().length())),sw-8),inner,my+12,0xFF404040,false);
                 }
                 return;
             }
-            g.drawString(font,"ARMIES   "+data.armies().size()+" / 15",inner,97,0xFFC9D6D2,false);
+            g.drawString(font,"ARMIES   "+data.armies().size()+" / 15",inner,97,0xFF404040,false);
             if(data.armies().isEmpty()){
-                g.drawString(font,"Create an army above to begin",inner+4,rosterTop()+6,0xFF9FB4B0,false);
+                g.drawString(font,"Create an army above to begin",inner+4,rosterTop()+6,0xFF404040,false);
             }
             var a=army();
             int summaryY=summaryTop();
-            g.fill(inner,summaryY,width-8,summaryY+summaryHeight(),0xFF323D3E);
+            MinecraftMenu.inset(g,inner,summaryY,width-8,summaryY+summaryHeight());
             if(missions){
                 var site=site();var caravan=caravan();
                 String line1=site!=null?site.type()+"  "+site.stage():caravan!=null?"CARAVAN  "+caravan.good():"Click a resource icon";
                 String line2=site!=null?site.progress()+"% | Stock "+site.stock()+(site.scouted()?" / "+site.total():" / ?"):caravan!=null?caravan.amount()+" cargo":"Select army above and site on map";
                 String line3=site!=null?(site.scouted()?"Duration: "+site.duration()+"s":"Scout to reveal exact yield"):"Destination: "+caravanX+", "+caravanZ;
-                g.drawString(font,clip(line1,sw-12),inner+5,summaryY+5,0xFFFFD789,false);
-                g.drawString(font,clip(line2,sw-12),inner+5,summaryY+16,0xFFD9E2DD,false);
-                g.drawString(font,clip(line3,sw-12),inner+5,summaryY+27,0xFFC2D2D1,false);
+                g.drawString(font,clip(line1,sw-12),inner+5,summaryY+5,0xFF404040,false);
+                g.drawString(font,clip(line2,sw-12),inner+5,summaryY+16,0xFF404040,false);
+                g.drawString(font,clip(line3,sw-12),inner+5,summaryY+27,0xFF404040,false);
             }else if(a!=null){
-                g.drawString(font,clip(a.name(),sw-12),inner+5,summaryY+5,0xFFFFD789,false);
-                g.drawString(font,clip(a.strength()+" ready + "+a.fielded()+" deployed",sw-12),inner+5,summaryY+16,0xFFD9E2DD,false);
-                g.drawString(font,clip("X "+a.x()+"  Z "+a.z()+"  "+(a.marching()?"MARCHING":"HOLD"),sw-12),inner+5,summaryY+27,0xFFC2D2D1,false);
-            }else g.drawString(font,"Select or create an army",inner+5,summaryY+12,0xFFCBD0CA,false);
-            g.drawString(font,missions?"MISSIONS / CARAVANS (scroll)":"ORDERS (scroll to see more)",inner,ordersLabelY(),0xFFC9D6D2,false);
+                g.drawString(font,clip(a.name(),sw-12),inner+5,summaryY+5,0xFF404040,false);
+                g.drawString(font,clip(a.strength()+" ready + "+a.fielded()+" deployed",sw-12),inner+5,summaryY+16,0xFF404040,false);
+                g.drawString(font,clip("X "+a.x()+"  Z "+a.z()+"  "+(a.marching()?"MARCHING":"HOLD"),sw-12),inner+5,summaryY+27,0xFF404040,false);
+            }else g.drawString(font,"Select or create an army",inner+5,summaryY+12,0xFF404040,false);
+            g.drawString(font,missions?"MISSIONS / CARAVANS (scroll)":"ORDERS (scroll to see more)",inner,ordersLabelY(),0xFF404040,false);
             int visible=visibleOrderRows();
             if(missions&&operations!=null){
                 int secs=operations.secondsLeft();String upkeep="5m upkeep "+operations.ironDue()+" iron / "+operations.wheatDue()+" wheat  "+(secs/60)+":"+String.format("%02d",secs%60);
-                g.drawString(font,clip(upkeep,sw-7),inner,height-29,operations.funded()?0xFFB4E1AB:0xFFFF8888,false);
-            }else g.drawString(font,"Orders "+(visible==0?0:actionScroll+1)+"-"+Math.min(10,actionScroll+visible)+" / 10",inner,height-29,0xFF8FADAC,false);
-            g.drawString(font,missions?(operations!=null&&!operations.funded()?"UNFUNDED: operations paused":"Click sites or caravan targets"):(marchArmed?"ARMED: click bare map to march":"Press MOVE: OFF to enable marches"),inner,height-17,0xFFCFC6B5,false);
+                g.drawString(font,clip(upkeep,sw-7),inner,height-29,operations.funded()?0xFF246B26:0xFFA01919,false);
+            }else g.drawString(font,"Orders "+(visible==0?0:actionScroll+1)+"-"+Math.min(10,actionScroll+visible)+" / 10",inner,height-29,0xFF404040,false);
+            g.drawString(font,missions?(operations!=null&&!operations.funded()?"UNFUNDED: operations paused":"Click sites or caravan targets"):(marchArmed?"ARMED: click bare map to march":"Press MOVE: OFF to enable marches"),inner,height-17,0xFF404040,false);
         }
         @Override public void render(GuiGraphics g,int mx,int my,float partial){
-            renderBackground(g);g.fill(0,0,width,height,0xFF142020);
+            renderBackground(g);MinecraftMenu.panel(g,0,0,width,height);
             drawMap(g);drawSidebar(g);
-            g.drawString(font,"WORLD MAP  •  "+clip(data.faction(),95),mapLeft()+3,3,0xFFE9E6D3,false);
-            g.drawString(font,"Click icons: inspect  |  Right drag: pan  |  Wheel: zoom",mapLeft()+7,height-34,0xFFE0D6C0,false);
-            g.drawString(font,"Green kingdom / Blue town / Red other / Dark unexplored",mapLeft()+7,height-21,0xFFB3C6C2,false);
+            g.drawString(font,"WORLD MAP  •  "+clip(data.faction(),95),mapLeft()+3,3,0xFF404040,false);
+            g.drawString(font,"Click icons: inspect  |  Right drag: pan  |  Wheel: zoom",mapLeft()+7,height-34,0xFF404040,false);
+            g.drawString(font,"Green kingdom / Blue town / Red other / Dark unexplored",mapLeft()+7,height-21,0xFF404040,false);
             if(insideMap(mx,my)){
                 int x=(int)Math.floor((viewX+(mx-midX())/zoom)*16.0),z=(int)Math.floor((viewZ+(my-midY())/zoom)*16.0);
                 g.drawString(font,"X: "+x+"  Z: "+z,mapLeft()+7,mapTop()+6,0xFFFFFFFF,true);
             }
             String message=!data.message().isBlank()?data.message():localMessage;
-            if(!message.isBlank())g.drawCenteredString(font,clip(message,Math.max(80,mapRight()-20)),(mapLeft()+mapRight())/2,height-9,0xFFFFD48B);
+            if(!message.isBlank())g.drawCenteredString(font,clip(message,Math.max(80,mapRight()-20)),(mapLeft()+mapRight())/2,height-9,0xFF404040);
             super.render(g,mx,my,partial);
             // Bright white selection outlines, independent of Minecraft button hover state.
             int sx=sideX()+7,sw=width-sx-8,third=(sw-10)/3;

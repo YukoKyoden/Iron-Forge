@@ -29,8 +29,9 @@ import org.lwjgl.glfw.GLFW;
 public final class WorldSelectionClient {
     private WorldSelectionClient() {}
     private static boolean active=false;
+    private static final ArchitectInputGate input=new ArchitectInputGate();
     private static boolean registering=false;
-    public static void registerBuilding(){activate();registering=true;}
+    public static void registerBuilding(){if(active)return;activate();registering=true;}
     private static BlockPos first, hover, second;
     private static int topLift=0;
     private static String status="";
@@ -40,13 +41,15 @@ public final class WorldSelectionClient {
     private static final double SELECT_REACH=96.0;
 
     public static void activate(){
-        Minecraft mc=Minecraft.getInstance();if(mc.player==null||mc.level==null)return;
+        Minecraft mc=Minecraft.getInstance();if(mc.player==null||mc.level==null||!input.start())return;
+        releaseVanillaMouse();
         registering=false;active=true;first=null;second=null;hover=null;topLift=0;waiting=false;lastSaveName="";
         status="Look at the first corner and left-click.";
         if(mc.screen!=null)mc.setScreen(null);
         mc.player.displayClientMessage(Component.literal("[Architect] Visual selection: click first corner, aim second, click again. Shift+wheel adjusts height. R restarts; Esc cancels."),false);
     }
-    public static void stop(){active=false;first=null;second=null;hover=null;waiting=false;topLift=0;status="";}
+    private static void releaseVanillaMouse(){var mc=Minecraft.getInstance();mc.options.keyAttack.setDown(false);mc.options.keyUse.setDown(false);}
+    public static void stop(){input.stop();releaseVanillaMouse();active=false;first=null;second=null;hover=null;waiting=false;topLift=0;status="";}
     public static void outcome(BlueprintNetwork.SelectionOutcome reply){
         Minecraft mc=Minecraft.getInstance();waiting=false;status=reply.message();
         if(mc.player!=null)mc.player.displayClientMessage(Component.literal("[Architect] "+reply.message()),false);
@@ -73,13 +76,14 @@ public final class WorldSelectionClient {
         long w=Math.abs((long)first.getX()-b.getX())+1;
         long h=Math.abs((long)first.getY()-b.getY())+1;
         long d=Math.abs((long)first.getZ()-b.getZ())+1;
-        return w+" x "+h+" x "+d+" = "+(w*h*d)+" / "+BlueprintData.MAX_VOLUME+" blocks";
+        return w+" x "+h+" x "+d+" = "+(w*h*d)+" / "+(registering?32768:BlueprintData.MAX_VOLUME)+" blocks";
     }
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event){
         if(event.phase!=TickEvent.Phase.END||!active)return;
         Minecraft mc=Minecraft.getInstance();if(mc.player==null||mc.level==null){stop();return;}
         // Escape is handled by Minecraft before some Forge key listeners run.
         // Cancel on the next tick whenever a different screen opens (Pause, Inventory, Chat).
+        releaseVanillaMouse();
         if(mc.screen!=null){if(!(mc.screen instanceof SaveScreen)&&!(mc.screen instanceof BuildingClient.RegisterScreen))stop();return;}
         HitResult aimed=mc.player.pick(SELECT_REACH,1.0f,false);
         if(aimed instanceof BlockHitResult hit && aimed.getType()==HitResult.Type.BLOCK)
@@ -87,15 +91,18 @@ public final class WorldSelectionClient {
         else hover=null;
     }
     @SubscribeEvent public static void click(InputEvent.MouseButton.Pre event){
-        if(!active||Minecraft.getInstance().screen!=null)return;
+        if(!active)return;
+        // Let Minecraft see releases: swallowing the activation click's release leaves use held forever.
+        if(event.getAction()==GLFW.GLFW_RELEASE){input.release(event.getButton());releaseVanillaMouse();return;}
+        if(Minecraft.getInstance().screen!=null)return;
         if(event.getButton()==GLFW.GLFW_MOUSE_BUTTON_RIGHT){event.setCanceled(true);return;}
         if(event.getButton()!=GLFW.GLFW_MOUSE_BUTTON_LEFT)return;
         event.setCanceled(true);
-        if(event.getAction()!=GLFW.GLFW_PRESS||waiting)return;
+        if(event.getAction()!=GLFW.GLFW_PRESS||waiting||!input.press(event.getButton()))return;
         if(hover==null){status="Aim at an actual building block.";return;}
         if(second!=null){second=null;status="Adjust the second corner, then click again.";return;}
         if(first==null){first=hover;second=null;topLift=0;status="Move to the opposite corner; click to confirm the highlighted selection.";return;}
-        if(!withinLimit()){status="Red selection exceeds 20 per side or 4096 total blocks. Move closer or shrink it.";return;}
+        if(!withinLimit()){status=registering?"Selection exceeds 64 per side or 32768 blocks.":"Selection exceeds 20 per side or 4096 blocks.";return;}
         second=hover;
         if(registering)Minecraft.getInstance().setScreen(new BuildingClient.RegisterScreen(first,opposite()));else Minecraft.getInstance().setScreen(new SaveScreen());
     }
@@ -144,12 +151,11 @@ public final class WorldSelectionClient {
         if(!active||!event.getOverlay().id().getPath().equals("hotbar"))return;
         Minecraft mc=Minecraft.getInstance();if(mc.player==null||mc.screen!=null)return;
         GuiGraphics g=event.getGuiGraphics();int cx=mc.getWindow().getGuiScaledWidth()/2,y=mc.getWindow().getGuiScaledHeight()-94;
-        g.fill(cx-175,y-12,cx+175,y+43,0xE71A2930);
-        g.fill(cx-175,y-12,cx+175,y-10,0xFFE8C57C);
-        g.drawCenteredString(mc.font,(registering?"REGISTER BUILDING  /  ":"BLUEPRINT SELECTION  /  ")+(first==null?"FIRST CORNER":"SECOND CORNER"),cx,y-6,0xFFE8C57C);
-        g.drawCenteredString(mc.font,first==null?"Look at first block • Left click to start":metrics(),cx,y+7,first==null||withinLimit()?0xFF98EACC:0xFFFF9B89);
-        g.drawCenteredString(mc.font,"Left click confirm  •  Shift+wheel height  •  R restart  •  Esc cancel",cx,y+20,0xFFDFE6E4);
-        g.drawCenteredString(mc.font,mc.font.plainSubstrByWidth(status,340),cx,y+32,0xFFFFDDA3);
+        MinecraftMenu.panel(g,cx-175,y-12,cx+175,y+43);
+        g.drawCenteredString(mc.font,(registering?"REGISTER BUILDING  /  ":"BLUEPRINT SELECTION  /  ")+(first==null?"FIRST CORNER":"SECOND CORNER"),cx,y-6,0xFF404040);
+        g.drawCenteredString(mc.font,first==null?"Look at first block • Left click to start":metrics(),cx,y+7,first==null||withinLimit()?0xFF246B26:0xFFA01919);
+        g.drawCenteredString(mc.font,"Left click confirm  •  Shift+wheel height  •  R restart  •  Esc cancel",cx,y+20,0xFF404040);
+        g.drawCenteredString(mc.font,mc.font.plainSubstrByWidth(status,340),cx,y+32,0xFF404040);
     }
     private static final class SaveScreen extends Screen {
         private EditBox name;
@@ -174,9 +180,10 @@ public final class WorldSelectionClient {
         @Override public void render(GuiGraphics g,int mouseX,int mouseY,float partial){
             renderBackground(g);
             int cx=width/2,cy=height/2;
-            g.drawCenteredString(font,"SAVE HOUSE BLUEPRINT",cx,cy-52,0xFFE8C57C);
-            g.drawCenteredString(font,metrics(),cx,cy-37,0xFFB5E8C7);
-            if(status.startsWith("Save failed"))g.drawCenteredString(font,font.plainSubstrByWidth(status,330),cx,cy+71,0xFFFFA28E);
+            MinecraftMenu.panel(g,cx-170,cy-65,cx+170,cy+105);
+            g.drawCenteredString(font,"SAVE HOUSE BLUEPRINT",cx,cy-52,0xFF404040);
+            g.drawCenteredString(font,metrics(),cx,cy-37,0xFF246B26);
+            if(status.startsWith("Save failed"))g.drawCenteredString(font,font.plainSubstrByWidth(status,330),cx,cy+71,0xFFA01919);
             super.render(g,mouseX,mouseY,partial);
         }
     }

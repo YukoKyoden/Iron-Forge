@@ -10,7 +10,7 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
 public final class ArchitectWand extends Item {
     public ArchitectWand(Properties p){super(p);}
-    private void activate(Level world){if(world.isClientSide)DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->WorldSelectionClient.registerBuilding());}
-    @Override public InteractionResultHolder<ItemStack> use(Level w,Player p,InteractionHand h){activate(w);return InteractionResultHolder.sidedSuccess(p.getItemInHand(h),w.isClientSide);}
-    @Override public InteractionResult useOn(UseOnContext c){activate(c.getLevel());return InteractionResult.sidedSuccess(c.getLevel().isClientSide);}
+    private void activate(Level world,Player player){if(player==null||player.getCooldowns().isOnCooldown(this))return;player.getCooldowns().addCooldown(this,10);if(world.isClientSide)DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->WorldSelectionClient.registerBuilding());}
+    @Override public InteractionResultHolder<ItemStack> use(Level w,Player p,InteractionHand h){activate(w,p);return InteractionResultHolder.sidedSuccess(p.getItemInHand(h),w.isClientSide);}
+    @Override public InteractionResult useOn(UseOnContext c){activate(c.getLevel(),c.getPlayer());return InteractionResult.sidedSuccess(c.getLevel().isClientSide);}
 }

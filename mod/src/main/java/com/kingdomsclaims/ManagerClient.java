@@ -28,18 +28,18 @@ public final class ManagerClient {
         }
         @Override public void tick(){if(++ticks%100==0)send("refresh","");}
         @Override public void render(GuiGraphics g,int mx,int my,float pt){renderBackground(g);int x=width/2-220,y=height/2-125;
-            g.fill(x,y,x+440,y+250,0xFF202020);g.fill(x,y,x+440,y+2,0xFFE6C47A);g.drawString(font,"KINGDOM MANAGER  /  "+data.name(),x+10,y+10,0xFFFFDB91,false);
-            if(tab==0){g.drawString(font,"Population  "+data.population()+" / "+data.housing(),x+120,y+39,0xFFFFFFFF,false);g.drawString(font,"Towns  "+data.towns()+"     Troops  "+data.troops(),x+120,y+59,0xFFFFFFFF,false);
-                g.drawString(font,data.funded()?"Upkeep in "+data.seconds()+" seconds":"UPKEEP OVERDUE - missing resources",x+120,y+86,data.funded()?0xFF8DEA9A:0xFFFF7777,false);
-                int[] ids={0,3,7};for(int i=0;i<3;i++){int n=ids[i];ResourceSlots.slot(g,x+120+i*50,y+105,OperationsData.GOODS[n],data.stock()[n],0,data.upkeep()[n],mx,my);g.drawString(font,"-"+data.upkeep()[n],x+126+i*50,y+147,0xFFFFDB91,false);}
+            MinecraftMenu.panel(g,x,y,x+440,y+250);MinecraftMenu.inset(g,x+112,y+30,x+429,y+204);g.drawString(font,"KINGDOM MANAGER  /  "+data.name(),x+10,y+10,0xFF404040,false);
+            if(tab==0){g.drawString(font,"Population  "+data.population()+" / "+data.housing(),x+120,y+39,0xFF404040,false);g.drawString(font,"Towns  "+data.towns()+"     Troops  "+data.troops(),x+120,y+59,0xFF404040,false);
+                g.drawString(font,data.funded()?"Upkeep in "+data.seconds()+" seconds":"UPKEEP OVERDUE - missing resources",x+120,y+86,data.funded()?0xFF246B26:0xFFA01919,false);
+                int[] ids={0,3,7};for(int i=0;i<3;i++){int n=ids[i];ResourceSlots.slot(g,x+120+i*50,y+105,OperationsData.GOODS[n],data.stock()[n],0,data.upkeep()[n],mx,my);g.drawString(font,"-"+data.upkeep()[n],x+126+i*50,y+147,0xFF404040,false);}
             }
             if(tab==1){for(int i=0;i<8;i++)ResourceSlots.slot(g,x+120+(i%4)*52,y+40+(i/4)*55,OperationsData.GOODS[i],data.stock()[i],data.rates()[i],data.upkeep()[i],mx,my);
-                g.drawString(font,"Storage  "+data.used()+" / "+data.storage(),x+120,y+158,0xFFFFFFFF,false);g.drawString(font,"Deposit / withdraw items at any warehouse core.",x+120,y+174,0xFFBBBBBB,false);
+                g.drawString(font,"Storage  "+data.used()+" / "+data.storage(),x+120,y+158,0xFF404040,false);g.drawString(font,"Deposit / withdraw items at any warehouse core.",x+120,y+174,0xFF404040,false);
             }
-            if(tab==2){g.drawString(font,"Registered structures: "+data.buildings().size(),x+120,y+62,0xFFFFFFFF,false);int start=page*5;for(int i=start;i<Math.min(start+5,data.buildings().size());i++){var r=data.buildings().get(i);g.drawString(font,font.plainSubstrByWidth(r.type()+"  "+r.capacity()+"  "+r.location(),236),x+120,y+82+(i-start)*24,r.active()?0xFF8DEA9A:0xFFFFA07A,false);}}
-            if(tab==3){g.drawString(font,"Reserve "+data.reserve()+"  /  Total troops "+data.troops(),x+120,y+40,0xFFFFFFFF,false);g.drawString(font,"Barracks capacity: "+data.barracks(),x+120,y+59,0xFFFFFFFF,false);ResourceSlots.slot(g,x+120,y+76,"IRON",data.stock()[0],0,3,mx,my);ResourceSlots.slot(g,x+168,y+76,"WHEAT",data.stock()[3],0,18,mx,my);g.drawString(font,"Per troop: 3 iron + 18 wheat",x+120,y+142,0xFFBBBBBB,false);}
-            if(tab==4)g.drawString(font,"Territory, scouting, armies and construction",x+120,y+42,0xFFFFFFFF,false);
-            g.drawString(font,font.plainSubstrByWidth(data.message(),410),x+12,y+236,0xFFFFDB91,false);super.render(g,mx,my,pt);
+            if(tab==2){g.drawString(font,"Registered structures: "+data.buildings().size(),x+120,y+62,0xFF404040,false);int start=page*5;for(int i=start;i<Math.min(start+5,data.buildings().size());i++){var r=data.buildings().get(i);g.drawString(font,font.plainSubstrByWidth(r.type()+"  "+r.capacity()+"  "+r.location(),236),x+120,y+82+(i-start)*24,r.active()?0xFF246B26:0xFFA01919,false);}}
+            if(tab==3){g.drawString(font,"Reserve "+data.reserve()+"  /  Total troops "+data.troops(),x+120,y+40,0xFF404040,false);g.drawString(font,"Barracks capacity: "+data.barracks(),x+120,y+59,0xFF404040,false);ResourceSlots.slot(g,x+120,y+76,"IRON",data.stock()[0],0,3,mx,my);ResourceSlots.slot(g,x+168,y+76,"WHEAT",data.stock()[3],0,18,mx,my);g.drawString(font,"Per troop: 3 iron + 18 wheat",x+120,y+142,0xFF404040,false);}
+            if(tab==4)g.drawString(font,"Territory, scouting, armies and construction",x+120,y+42,0xFF404040,false);
+            g.drawString(font,font.plainSubstrByWidth(data.message(),410),x+12,y+236,0xFF404040,false);super.render(g,mx,my,pt);
         }
         @Override public boolean isPauseScreen(){return false;}
     }
