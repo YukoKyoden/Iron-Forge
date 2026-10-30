@@ -153,8 +153,10 @@ public final class EconomyService {
     public static Item goodsItem(String good){return switch(good){
         case "IRON"->Items.IRON_INGOT;case "WHEAT"->Items.WHEAT;case "COAL"->Items.COAL;
         case "LOGS"->Items.OAK_LOG;case "STONE"->Items.COBBLESTONE;
-        case "EMERALDS"->Items.EMERALD;case "GOLD"->Items.GOLD_INGOT;case "GOLD_NUGGETS"->Items.GOLD_NUGGET;default->null;
+        case "EMERALDS"->Items.EMERALD;case "GOLD"->Items.GOLD_INGOT;case "GOLD_NUGGETS"->Items.GOLD_NUGGET;default->{var id=net.minecraft.resources.ResourceLocation.tryParse(good);var item=id==null?Items.AIR:net.minecraft.core.registries.BuiltInRegistries.ITEM.get(id);yield item==Items.AIR?null:item;}
     };}
+    public static String itemGood(Item item){for(String g:OperationsData.GOODS)if(goodsItem(g)==item)return g;return net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item).toString();}
+    public static boolean storable(Item item){return item instanceof net.minecraft.world.item.BlockItem||Arrays.stream(OperationsData.GOODS).anyMatch(g->goodsItem(g)==item);}
     /** Material transfers are physical and local; no more virtual treasury deposits. */
     public static String deposit(ServerPlayer p,UUID faction,String good,int amount){
         if(amount<1||amount>2304)return "Invalid deposit quantity.";

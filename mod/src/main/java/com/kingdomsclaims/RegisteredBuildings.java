@@ -140,6 +140,7 @@ public final class RegisteredBuildings extends SavedData {
         if(cursor>1000000)cursor=0;
     }
     public void changed(ServerLevel w,BlockPos p){boolean found=false;for(Building b:buildings)if(b.dimension.equals(KingdomData.dim(w))&&b.contains(p)){b.capacity=0;b.dirty=true;found=true;}if(found)setDirty();}
+    @SubscribeEvent public static void notified(BlockEvent.NeighborNotifyEvent e){if(!e.isCanceled()&&e.getLevel() instanceof ServerLevel w)get(w.getServer()).changed(w,e.getPos());}
     @SubscribeEvent public static void exploded(net.minecraftforge.event.level.ExplosionEvent.Detonate e){if(e.getLevel() instanceof ServerLevel w)for(BlockPos p:e.getAffectedBlocks())get(w.getServer()).changed(w,p);}
     @SubscribeEvent public static void placed(BlockEvent.EntityPlaceEvent e){if(!e.isCanceled()&&e.getLevel() instanceof ServerLevel w)get(w.getServer()).changed(w,e.getPos());}
     @SubscribeEvent public static void broken(BlockEvent.BreakEvent e){if(!e.isCanceled()&&e.getLevel() instanceof ServerLevel w)get(w.getServer()).changed(w,e.getPos());}

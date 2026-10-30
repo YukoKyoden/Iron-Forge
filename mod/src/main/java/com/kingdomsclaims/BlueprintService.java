@@ -180,7 +180,7 @@ public final class BlueprintService {
         }
         BlueprintData.Site site=new BlueprintData.Site(UUID.randomUUID(),plan,player.getUUID(),plan.dimension,anchor,turns);
         data.sites.put(site.id,site);data.setDirty();
-        return yes("Construction started: "+plan.name+" ("+plan.blocks.size()+" blocks, "+site.secondsRemaining+" seconds). Materials paid from the shared stockpile (specialty items from inventory).");
+        return yes("Construction started: "+plan.name+" ("+plan.blocks.size()+" blocks, "+site.secondsRemaining+" seconds). Materials paid from the shared kingdom stockpile.");
     }
     /** Stable ordering makes construction visibly grow from its foundation, even after a restart. */
     private static List<BlueprintData.Piece> constructionOrder(BlueprintData.Plan plan){

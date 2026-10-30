@@ -17,12 +17,12 @@ import net.minecraftforge.network.simple.SimpleChannel;
 /** Server-validated physical warehouse inventory, production, and shortage snapshot. */
 public final class SupplyDepotNetwork {
     private SupplyDepotNetwork(){}
-    private static final String V="3";
+    private static final String V="4";
     public static final int DISPLAY_CAPACITY=4096; // Visual capacity reference; does not erase legacy stock.
     public static final SimpleChannel CHANNEL=NetworkRegistry.newSimpleChannel(new ResourceLocation(KingdomsClaims.MODID,"supply_depot"),()->V,V::equals,V::equals);
     public static void register(){
-        CHANNEL.registerMessage(0,View.class,View::write,View::read,View::handle);
-        CHANNEL.registerMessage(1,Transfer.class,Transfer::write,Transfer::read,Transfer::handle);
+        CHANNEL.registerMessage(0,View.class,View::write,View::read,View::handle,java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(1,Transfer.class,Transfer::write,Transfer::read,Transfer::handle,java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
     }
     public static boolean canOpen(ServerPlayer p,BlockPos pos){return faction(p,pos)!=null;}
     private static UUID faction(ServerPlayer p,BlockPos pos){
@@ -41,35 +41,36 @@ public final class SupplyDepotNetwork {
         UUID owner=faction(p,pos);
         if(owner==null){p.sendSystemMessage(Component.literal("[Depot] Stand near a depot in your claim with STORAGE permission."));return;}
         PhysicalWarehouses.InventoryView view=PhysicalWarehouses.view(p,pos,owner);
-        CHANNEL.send(PacketDistributor.PLAYER.with(()->p),new View(pos,view.stock(),view.carried(),
-            view.capacity(),view.used(),view.modules(),PhysicalWarehouses.rates(p.serverLevel(),owner,pos),message));
+        CHANNEL.send(PacketDistributor.PLAYER.with(()->p),new View(pos,view.keys(),view.stock(),view.carried(),
+            view.capacity(),view.used(),view.modules(),rates(p,owner,view.keys()),message));
     }
-    public record View(BlockPos pos,int[] stored,int[] carried,int capacity,int used,int modules,int[] rates,String message){
+    private static int[] rates(ServerPlayer p,UUID owner,String[] keys){int[] base=PhysicalWarehouses.rates(p.serverLevel(),owner,p.blockPosition()),result=new int[keys.length];for(int i=0;i<keys.length;i++)for(int n=0;n<OperationsData.GOODS.length;n++)if(keys[i].equals(OperationsData.GOODS[n]))result[i]=base[n];return result;}
+    public record View(BlockPos pos,String[] keys,int[] stored,int[] carried,int capacity,int used,int modules,int[] rates,String message){
         static void write(View a,FriendlyByteBuf b){
-            b.writeBlockPos(a.pos);for(int n:a.stored)b.writeVarInt(n);for(int n:a.carried)b.writeVarInt(n);
+            b.writeBlockPos(a.pos);b.writeVarInt(a.keys.length);for(String key:a.keys)b.writeUtf(key,128);for(int n:a.stored)b.writeVarInt(n);for(int n:a.carried)b.writeVarInt(n);
             b.writeVarInt(a.capacity);b.writeVarInt(a.used);b.writeVarInt(a.modules);for(int n:a.rates)b.writeVarInt(n);b.writeUtf(a.message,200);
         }
         static View read(FriendlyByteBuf b){
-            BlockPos pos=b.readBlockPos();int size=OperationsData.GOODS.length;
+            BlockPos pos=b.readBlockPos();int size=b.readVarInt();if(size<8||size>4096)throw new IllegalArgumentException("Stockpile too large");String[] keys=new String[size];for(int i=0;i<size;i++)keys[i]=b.readUtf(128);
             int[] stock=new int[size],carried=new int[size];
             for(int i=0;i<size;i++)stock[i]=b.readVarInt();for(int i=0;i<size;i++)carried[i]=b.readVarInt();
             int cap=b.readVarInt(),used=b.readVarInt(),modules=b.readVarInt();int[] rates=new int[size];for(int i=0;i<size;i++)rates[i]=b.readVarInt();
-            return new View(pos,stock,carried,cap,used,modules,rates,b.readUtf(200));
+            return new View(pos,keys,stock,carried,cap,used,modules,rates,b.readUtf(200));
         }
         static void handle(View a,Supplier<NetworkEvent.Context> supplier){var ctx=supplier.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->SupplyDepotClient.accept(a)));ctx.setPacketHandled(true);}
     }
-    public record Transfer(BlockPos pos,String action,int type){
-        static void write(Transfer a,FriendlyByteBuf b){b.writeBlockPos(a.pos);b.writeUtf(a.action,12);b.writeVarInt(a.type);}
-        static Transfer read(FriendlyByteBuf b){return new Transfer(b.readBlockPos(),b.readUtf(12),b.readVarInt());}
+    public record Transfer(BlockPos pos,String action,String good){
+        static void write(Transfer a,FriendlyByteBuf b){b.writeBlockPos(a.pos);b.writeUtf(a.action,12);b.writeUtf(a.good,128);}
+        static Transfer read(FriendlyByteBuf b){return new Transfer(b.readBlockPos(),b.readUtf(12),b.readUtf(128));}
         static void handle(Transfer a,Supplier<NetworkEvent.Context> supplier){var ctx=supplier.get();ServerPlayer p=ctx.getSender();if(p!=null)ctx.enqueueWork(()->{
             UUID owner=faction(p,a.pos);if(owner==null){p.sendSystemMessage(Component.literal("[Depot] Not authorized at this depot."));return;}
             String result;
             if(a.action.equals("refresh")){open(p,a.pos,"");return;}
             if(a.action.equals("all")){
-                int moved=0;for(String good:OperationsData.GOODS)moved+=PhysicalWarehouses.storeFromPlayer(p,owner,a.pos,good,2304);
-                result=moved==0?"Nothing deposited; check your carried resources or add expansion blocks.":"Deposited materials from "+moved+" resource types.";
-            }else if(a.type<0||a.type>=OperationsData.GOODS.length)result="Invalid material.";
-            else result=PhysicalWarehouses.transfer(p,a.pos,owner,OperationsData.GOODS[a.type],a.action);
+                int moved=PhysicalWarehouses.storeAll(p,owner,a.pos);
+                result=moved==0?"Nothing deposited; check your carried resources or add expansion blocks.":"Deposited "+moved+" resource items.";
+            }else if(!SharedStockpile.validGood(a.good))result="Invalid material.";
+            else result=PhysicalWarehouses.transfer(p,a.pos,owner,a.good,a.action);
 
             open(p,a.pos,result);
         });ctx.setPacketHandled(true);}

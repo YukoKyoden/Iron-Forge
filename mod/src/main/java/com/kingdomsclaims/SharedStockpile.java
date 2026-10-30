@@ -14,7 +14,7 @@ public final class SharedStockpile extends SavedData {
         return t!=null&&t.parentKingdom!=null&&KingdomData.get(server).kingdoms.containsKey(t.parentKingdom)?t.parentKingdom:id;
     }
     private UUID resolve(UUID id){return server==null?id:owner(server,id);}
-    public static boolean validGood(String good){return Arrays.asList(OperationsData.GOODS).contains(good);}
+    public static boolean validGood(String good){if(Arrays.asList(OperationsData.GOODS).contains(good))return true;if(!good.contains(":"))return false;var item=EconomyService.goodsItem(good);return item!=null&&EconomyService.storable(item);}
 
     public static SharedStockpile get(MinecraftServer server){
         SharedStockpile s=server.overworld().getDataStorage().computeIfAbsent(SharedStockpile::load,SharedStockpile::new,"kingdomsclaims_shared_stockpile");s.server=server;return s;
@@ -25,7 +25,7 @@ public final class SharedStockpile extends SavedData {
             CompoundTag entry=(CompoundTag)tag;
             if(!entry.hasUUID("Id"))continue;
             Map<String,Integer> goods=new HashMap<>();CompoundTag stored=entry.getCompound("Goods");
-            for(String name:OperationsData.GOODS)goods.put(name,Math.max(0,stored.getInt(name)));
+            for(String name:stored.getAllKeys())if(validGood(name))goods.put(name,Math.max(0,stored.getInt(name)));
             d.balances.put(entry.getUUID("Id"),goods);
         }
         return d;
@@ -34,7 +34,7 @@ public final class SharedStockpile extends SavedData {
         ListTag list=new ListTag();
         for(var entry:balances.entrySet()){
             CompoundTag tag=new CompoundTag(),goods=new CompoundTag();tag.putUUID("Id",entry.getKey());
-            for(String name:OperationsData.GOODS)goods.putInt(name,entry.getValue().getOrDefault(name,0));
+            for(var good:entry.getValue().entrySet())goods.putInt(good.getKey(),Math.max(0,good.getValue()));
             tag.put("Goods",goods);list.add(tag);
         }
         root.put("Factions",list);return root;
@@ -43,14 +43,15 @@ public final class SharedStockpile extends SavedData {
     public boolean mergeTown(UUID town,UUID kingdom){
         var source=balances.get(town);if(source==null||town.equals(kingdom))return true;
         var target=balances.computeIfAbsent(kingdom,k->new HashMap<>());
-        for(String g:OperationsData.GOODS)if((long)source.getOrDefault(g,0)+target.getOrDefault(g,0)>Integer.MAX_VALUE)return false;
-        for(String g:OperationsData.GOODS)target.merge(g,source.getOrDefault(g,0),Integer::sum);
+        for(String g:source.keySet())if((long)source.getOrDefault(g,0)+target.getOrDefault(g,0)>Integer.MAX_VALUE)return false;
+        for(String g:source.keySet())target.merge(g,source.getOrDefault(g,0),Integer::sum);
         balances.remove(town);setDirty();return true;
     }
     public int amount(UUID owner,String good){owner=resolve(owner);return Math.max(0,balances.getOrDefault(owner,Map.of()).getOrDefault(good,0));}
-    public int used(UUID owner){long sum=0;for(String good:OperationsData.GOODS)sum+=amount(owner,good);return (int)Math.min(Integer.MAX_VALUE,sum);}
+    public Set<String> keys(UUID owner){return Set.copyOf(balances.getOrDefault(resolve(owner),Map.of()).keySet());}
+    public int used(UUID owner){long sum=0;for(int n:balances.getOrDefault(resolve(owner),Map.of()).values())sum+=Math.max(0,n);return (int)Math.min(Integer.MAX_VALUE,sum);}
     public int add(UUID owner,String good,int amount,int maxTotal){owner=resolve(owner);
-        if(owner==null||amount<=0||!Arrays.asList(OperationsData.GOODS).contains(good))return 0;
+        if(owner==null||amount<=0||!validGood(good))return 0;
         int existing=amount(owner,good);
         int accepted=StockpileMath.accepted(existing,used(owner),amount,maxTotal);
         if(accepted>0){balances.computeIfAbsent(owner,id->new HashMap<>()).put(good,existing+accepted);setDirty();}

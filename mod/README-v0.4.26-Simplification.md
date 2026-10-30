@@ -9,7 +9,7 @@ Use a new world. This release replaces local depot inventories with one server-o
 3. The five sections are Kingdom, Stockpile, Build, Army and Map. The existing 3D planner and blueprint library remain under Build and Map.
 4. Craft a Kingdom Architect's Wand with one gold ingot and two diagonal sticks, or choose Register a building under Build. Left-click two corners; Shift+wheel adjusts height. Choose a type, scan, then confirm.
 5. Include the full building, its foundation, roof, beds and door. Farms must include farmland and crops in the selection.
-6. Put a Warehouse Core anywhere inside your claim to deposit/withdraw actual items. Shift-click a resource to deposit a stack; right-click to withdraw. Deposit all moves all supported carried stacks. Starting shared capacity is 1024 items; cores/shelves and registered warehouses expand it.
+6. Put a Warehouse Core anywhere inside your claim to deposit/withdraw actual items. Shift-click a resource to deposit a stack; right-click to withdraw. Deposit all moves carried resource and building-block stacks, including specialty blocks. Arrow buttons page through additional item types. Renamed/tagged items are left in your inventory. Starting shared capacity is 1024 items; cores/shelves and registered warehouses expand it.
 
 ## Registration rules
 
@@ -26,7 +26,7 @@ Selections cannot overlap, cross foreign/wilderness claims or exceed 32768 block
 
 Resources, recruitment and construction use the shared ledger. Upkeep runs once per kingdom every five minutes, includes attached town troops and consumes iron, wheat and gold atomically. An unpaid cycle retries each second, then starts a fresh five-minute interval. Gold is physical-value backed: one ingot equals nine nuggets, with change retained. Tax income enters the same stockpile.
 
-Blueprints retain folders, holograms, rotations, repeated placement and progressive construction. Basic materials come from shared stock; specialty blocks use exact carried items. Metal/coal/emerald/hay blocks cost nine material units. Completion attempts the same building registration as manual structures; nonfunctional/decorative designs remain ordinary builds.
+Blueprints retain folders, holograms, rotations, repeated placement and progressive construction. All construction materials come from shared stock. Deposit specialty building blocks at a warehouse with Deposit all; exact deposited blocks are used before equivalent basic resource units. Metal/coal/emerald/hay blocks cost nine material units. Completion attempts the same building registration as manual structures; nonfunctional/decorative designs remain ordinary builds.
 
 The existing army map, commands, sieges, watchtowers, towns and permissions remain available. Ordinary wilderness mining and harvesting are unchanged.
 

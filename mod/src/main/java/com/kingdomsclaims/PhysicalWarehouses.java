@@ -139,15 +139,16 @@ public final class PhysicalWarehouses {
         if(d!=null)migrateOld(w,pos,d);
         return d;
     }
-    public record InventoryView(int[] stock,int[] carried,int capacity,int used,int modules){}
+    public record InventoryView(String[] keys,int[] stock,int[] carried,int capacity,int used,int modules){}
     public static InventoryView view(ServerPlayer p,BlockPos pos,UUID faction){
-        int[] totals=new int[OperationsData.GOODS.length],carried=new int[totals.length];
-        for(int i=0;i<totals.length;i++){
-            totals[i]=stock(p.serverLevel()).amount(faction,OperationsData.GOODS[i]);
-            carried[i]=EconomyService.carried(p,OperationsData.GOODS[i]);
-        }
-        return new InventoryView(totals,carried,sharedCapacity(p.getServer(),faction),stock(p.serverLevel()).used(faction),modules(p.serverLevel(),pos,null).size());
+        LinkedHashSet<String> goods=new LinkedHashSet<>(Arrays.asList(OperationsData.GOODS));
+        stock(p.serverLevel()).keys(faction).stream().filter(g->stock(p.serverLevel()).amount(faction,g)>0).sorted().forEach(goods::add);
+        for(ItemStack stack:p.getInventory().items)if(!stack.isEmpty()&&!stack.hasTag()&&EconomyService.storable(stack.getItem()))goods.add(EconomyService.itemGood(stack.getItem()));
+        String[] keys=goods.stream().limit(4096).toArray(String[]::new);int[] totals=new int[keys.length],carried=new int[keys.length];
+        for(int i=0;i<keys.length;i++){totals[i]=stock(p.serverLevel()).amount(faction,keys[i]);carried[i]=EconomyService.carried(p,keys[i]);}
+        return new InventoryView(keys,totals,carried,sharedCapacity(p.server,faction),stock(p.serverLevel()).used(faction),modules(p.serverLevel(),pos,null).size());
     }
+    public static int storeAll(ServerPlayer p,UUID faction,BlockPos pos){Set<String> goods=new LinkedHashSet<>();for(ItemStack stack:p.getInventory().items)if(!stack.isEmpty()&&!stack.hasTag()&&EconomyService.storable(stack.getItem()))goods.add(EconomyService.itemGood(stack.getItem()));int moved=0;for(String good:goods)moved+=storeFromPlayer(p,faction,pos,good,2304);return moved;}
 
         /** Nearby storage only: no forced chunk loads or global resource pooling. */
     public static BlockPos nearest(ServerLevel w,UUID faction,BlockPos target,int maxDistance){
@@ -272,24 +273,18 @@ public final class PhysicalWarehouses {
     }
     /** Atomic on the server thread: verify stock/inventory BEFORE withdrawing anything. */
     public static String payConstruction(ServerPlayer player,UUID faction,BlockPos anchor,Map<Item,Integer> costs){
-        SharedStockpile s=stock(player.serverLevel());Map<Item,Integer> personal=new LinkedHashMap<>();Map<String,Integer> shared=new HashMap<>();
+        SharedStockpile stock=stock(player.serverLevel());Map<String,Integer> required=new LinkedHashMap<>();
         for(var entry:costs.entrySet()){
-            String good=buildingGood(entry.getKey());int unit=materialUnits(entry.getKey());int required=Math.multiplyExact(entry.getValue(),unit);
-            int fromShared=good==null?0:required;
-            if(fromShared>0)shared.merge(good,fromShared,Integer::sum);
-            if(required>fromShared)personal.merge(entry.getKey(),(required-fromShared+unit-1)/unit,Integer::sum);
+            Item item=entry.getKey();int count=entry.getValue();String exact=EconomyService.itemGood(item),basic=buildingGood(item);
+            int available=Math.max(0,stock.amount(faction,exact)-required.getOrDefault(exact,0));int take=Math.min(count,available);
+            if(take>0)required.merge(exact,take,Integer::sum);
+            if(count>take)required.merge(basic==null?exact:basic,Math.multiplyExact(count-take,basic==null?1:materialUnits(item)),Integer::sum);
         }
-        List<String> missing=new ArrayList<>();
-        for(var e:personal.entrySet()){
-            int count=0;for(ItemStack stack:player.getInventory().items)if(stack.is(e.getKey()))count+=stack.getCount();
-            if(count<e.getValue())missing.add(e.getKey().getDescription().getString()+" "+count+"/"+e.getValue());
+        if(!stock.canPay(faction,required)){
+            List<String> missing=new ArrayList<>();for(var cost:required.entrySet())if(stock.amount(faction,cost.getKey())<cost.getValue())missing.add(cost.getKey()+" "+stock.amount(faction,cost.getKey())+"/"+cost.getValue());
+            String message="Stockpile needs: "+String.join(", ",missing.subList(0,Math.min(4,missing.size())));return message.substring(0,Math.min(240,message.length()));
         }
-        if(!missing.isEmpty())return "Missing: "+String.join(", ",missing.subList(0,Math.min(4,missing.size())));
-        if(!s.pay(faction,shared))return "Not enough kingdom resources for this design. See its material requirements.";
-        for(var e:personal.entrySet()){
-            int left=e.getValue();for(ItemStack stack:player.getInventory().items)if(stack.is(e.getKey())&&left>0){int used=Math.min(left,stack.getCount());stack.shrink(used);left-=used;}
-        }
-        player.getInventory().setChanged();return null;
+        return stock.pay(faction,required)?null:"Stockpile changed; retry construction.";
     }
 
         /** Return cargo to the closest loaded warehouse near its destination.
