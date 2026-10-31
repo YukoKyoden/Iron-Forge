@@ -32,7 +32,7 @@ public final class WarTableService {
             String name=value.trim();if(name.length()<3||name.length()>24||!name.matches("[A-Za-z0-9 _-]+"))return "Army names must be 3-24 letters, numbers, spaces, _ or -.";
             for(var a:military.armiesOf(faction.id()))if(a.name.equalsIgnoreCase(name))return "An army with this name already exists.";
             return military.create(faction.id(),faction.type(),name,KingdomData.dim(player.serverLevel()),table)==null?
-                "Maximum 15 armies per faction.":"Created "+name+". Assign troops from the faction reserve.";
+                "Maximum 15 armies per faction.":"Created "+name+". Recruit directly near a registered barracks, or use existing reserves.";
         }
         String[] parts=value.split("\\|",-1);
         UUID armyId;
@@ -41,20 +41,37 @@ public final class WarTableService {
         if(army==null||!army.faction.equals(faction.id())||!army.type.equals(faction.type()))return "Army not found in this faction.";
         if(!action.equals("status")&&OperationsData.get(player.getServer()).committed(army.id))return "This army is committed to a resource expedition, outpost, or caravan. Finish or abort that operation first.";
         if(action.equals("status"))return army.name+" at "+(int)army.locationX+", "+(int)army.locationZ+(army.marching?" (marching)":" (holding)");
-        if(action.equals("march")){
-            if(army.strength<=0||army.fielded>0)return "Assign troops and recall deployed units before marching.";
+        if(action.equals("recruit10")||action.equals("recruit50")){
+            int amount=action.equals("recruit50")?50:10;
+            if(army.marching||!nearby(army,table,KingdomData.dim(player.serverLevel())))return "Recruit while stationed near this control point and a registered barracks.";
+            boolean barracks=false;for(var b:RegisteredBuildings.get(player.server).of(player.server,faction.id()))if(b.type.equals("barracks")&&b.capacity>0&&!b.dirty&&b.dimension.equals(army.dimension)&&RegisteredBuildings.owned(player.serverLevel(),b)&&b.min.distSqr(table)<=96*96)barracks=true;
+            if(!barracks)return "Register a working barracks within 96 blocks to recruit directly into this squad.";
+            int capacity=Math.min(military.max(faction.type()),RegisteredBuildings.get(player.server).barracksCapacity(player.server,faction.id()));
+            if((long)EconomyService.troops(player.server,faction.id())+amount>capacity)return "Barracks troop capacity reached: "+capacity;
+            var cost=Map.of("IRON",3*amount,"WHEAT",18*amount);
+            if(!PhysicalWarehouses.payLocal(player.serverLevel(),faction.id(),table,96,cost))return "Recruitment needs "+(3*amount)+" iron and "+(18*amount)+" wheat in the shared stockpile.";
+            army.strength+=amount;if(army.order.equals("legacy"))army.order="hold";military.setDirty();return "Recruited "+amount+" directly into "+army.name+".";
+        }
+        if(action.equals("follow")){
+            if(army.strength+army.fielded<=0)return "Recruit troops first.";
+            if(!army.dimension.equals(KingdomData.dim(player.serverLevel())))return "Army is in another dimension.";
+            army.commander=player.getUUID();army.order="follow";army.rallyX=player.getBlockX();army.rallyZ=player.getBlockZ();army.marching=true;military.setDirty();return army.name+" is following you.";
+        }
+        if(action.equals("march")||action.equals("attack")){
+            if(!army.dimension.equals(KingdomData.dim(player.serverLevel())))return "Army is in another dimension.";
+            if(army.strength+army.fielded<=0)return "Recruit or assign troops first.";
             if(parts.length!=3)return "Enter X and Z rally coordinates.";
             int x,z;try{x=Integer.parseInt(parts[1]);z=Integer.parseInt(parts[2]);}catch(Exception e){return "Rally coordinates must be integers.";}
             if(Math.hypot(x-army.locationX,z-army.locationZ)>MAX_DISTANCE)return "Rally must be within 2048 blocks of your army.";
-            army.rallyX=x;army.rallyZ=z;army.marching=Math.hypot(x-army.locationX,z-army.locationZ)>1.5;
-            military.setDirty();return army.marching?"March ordered to "+x+", "+z+". Troops travel numerically, no teleporting.":"Army already at rally point.";
+            army.order=action.equals("attack")?"attack":"move";army.commander=null;army.rallyX=x;army.rallyZ=z;army.marching=Math.hypot(x-army.locationX,z-army.locationZ)>1.5;
+            military.setDirty();return army.marching?"Ordered "+army.order+" to "+x+", "+z+".":"Army already at rally point.";
         }
         if(action.equals("home")){
-            if(army.fielded>0)return "Recall your deployed soldiers first.";
+            army.order="retreat";army.commander=null;
             army.rallyX=army.origin.getX();army.rallyZ=army.origin.getZ();army.marching=Math.hypot(army.rallyX-army.locationX,army.rallyZ-army.locationZ)>1.5;
             military.setDirty();return army.marching?"Ordered march back to original headquarters.":"Army is at headquarters.";
         }
-        if(action.equals("hold")){army.marching=false;military.setDirty();return "Army holding position at "+(int)army.locationX+", "+(int)army.locationZ+".";}
+        if(action.equals("hold")){army.order="hold";army.commander=null;army.rallyX=(int)Math.round(army.locationX);army.rallyZ=(int)Math.round(army.locationZ);army.marching=false;military.setDirty();return "Army holding position at "+(int)army.locationX+", "+(int)army.locationZ+".";}
         if(action.equals("formation")){
             if(parts.length!=2||!List.of("line","column","wedge").contains(parts[1]))return "Unknown formation.";
             army.formation=parts[1];military.setDirty();
@@ -101,11 +118,17 @@ public final class WarTableService {
             List<SoldierEntity> units=player.serverLevel().getEntitiesOfClass(SoldierEntity.class,new AABB(table).inflate(40),
                 s->army.id.equals(s.getArmyId())&&s.isAlive());
             if(units.isEmpty())return "No surviving soldiers from this army near this War Table. Bring them back first.";
-            int count=units.size();for(var unit:units)unit.discard();
+            int count=units.stream().mapToInt(SoldierEntity::representedTroops).sum();for(var unit:units)unit.discard();
             army.fielded=Math.max(0,army.fielded-count);army.strength+=count;military.setDirty();
             return "Recalled "+count+" surviving soldiers into the assigned army. Casualties remain lost.";
         }
+        if(action.equals("gather")){
+            if(army.marching)return "Hold the squad before gathering soldiers.";
+            if(!ArmyFieldService.pack(player.server,army))return "All surviving soldiers must be loaded and out of combat.";
+            army.order="legacy";military.setDirty();return "Gathered survivors into squad strength. New orders show them nearby again.";
+        }
         if(action.equals("split")){
+            if(!army.marching&&army.fielded>0)ArmyFieldService.pack(player.server,army);
             if(army.marching||army.fielded>0||army.strength<2)return "Stop and recall units; an army needs at least two troops to split.";
             if(military.armyCount(faction.id())>=MilitaryData.MAX_ARMIES)return "15-army faction limit reached.";
             int amount=army.strength/2;String name=army.name+" II";

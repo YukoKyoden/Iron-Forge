@@ -10,11 +10,12 @@ public final class BuildingClient {
     public static final Item[] ICONS={Items.RED_BED,Items.WHEAT,Items.CHEST,Items.IRON_PICKAXE,Items.IRON_AXE,Items.IRON_SWORD};
     public static void accept(BuildingNetwork.Reply reply){var mc=Minecraft.getInstance();if(mc.screen instanceof RegisterScreen s){s.message=reply.message();s.valid=reply.count()>0;if(reply.done()){WorldSelectionClient.stop();mc.setScreen(null);if(mc.player!=null)mc.player.displayClientMessage(Component.literal(reply.message()),false);}}}
     public static final class RegisterScreen extends Screen {
-        private final BlockPos a,b;private int type=0;private boolean valid=false;private String message="Choose a type, then scan your selection.";
+        private final BlockPos a,b;private boolean mineOnly=false;private int type=0;private boolean valid=false;private String message="Choose a type, then scan your selection.";
         public RegisterScreen(BlockPos a,BlockPos b){super(Component.literal("Register Building"));this.a=a;this.b=b;}
+        public RegisterScreen(BlockPos a,BlockPos b,boolean mine){this(a,b);mineOnly=mine;if(mine)type=3;}
         private void send(boolean confirm){BuildingNetwork.CHANNEL.sendToServer(new BuildingNetwork.Request(a,b,RegisteredBuildings.TYPES[type],confirm));}
         @Override protected void init(){int x=width/2-150,y=height/2-100;
-            for(int i=0;i<6;i++){final int t=i;addRenderableWidget(Button.builder(Component.literal(RegisteredBuildings.TYPES[i]),v->{type=t;valid=false;send(false);}).bounds(x+(i%2)*152,y+(i/2)*30,148,24).build());}
+            for(int i=0;i<6;i++){final int t=i;if(mineOnly&&i!=3)continue;addRenderableWidget(Button.builder(Component.literal(RegisteredBuildings.TYPES[i]),v->{if(t==3&&!mineOnly){WorldSelectionClient.stop();Minecraft.getInstance().setScreen(null);WorldSelectionClient.selectMode(true);return;}type=t;valid=false;send(false);}).bounds(x+(i%2)*152,y+(i/2)*30,148,24).build());}
             addRenderableWidget(Button.builder(Component.literal("Scan building"),v->send(false)).bounds(x,y+137,145,22).build());
             addRenderableWidget(Button.builder(Component.literal("Confirm registration"),v->{if(valid)send(true);}).bounds(x+152,y+137,148,22).build());
             addRenderableWidget(Button.builder(Component.literal("Cancel"),v->onClose()).bounds(x+90,y+169,120,20).build());

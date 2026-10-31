@@ -30,8 +30,9 @@ public final class WorldSelectionClient {
     private WorldSelectionClient() {}
     private static boolean active=false;
     private static final ArchitectInputGate input=new ArchitectInputGate();
-    private static boolean registering=false;
-    public static void registerBuilding(){if(active)return;activate();registering=true;}
+    private static boolean registering=false,mineMode=false;
+    public static void registerBuilding(){if(active)return;Minecraft.getInstance().setScreen(new ModeScreen());}
+    public static void selectMode(boolean mine){activate();registering=true;mineMode=mine;status=mine?"Select the first rail at the mine opening.":status;}
     private static BlockPos first, hover, second;
     private static int topLift=0;
     private static String status="";
@@ -43,7 +44,7 @@ public final class WorldSelectionClient {
     public static void activate(){
         Minecraft mc=Minecraft.getInstance();if(mc.player==null||mc.level==null||!input.start())return;
         releaseVanillaMouse();
-        registering=false;active=true;first=null;second=null;hover=null;topLift=0;waiting=false;lastSaveName="";
+        registering=false;mineMode=false;active=true;first=null;second=null;hover=null;topLift=0;waiting=false;lastSaveName="";
         status="Look at the first corner and left-click.";
         if(mc.screen!=null)mc.setScreen(null);
         mc.player.displayClientMessage(Component.literal("[Architect] Visual selection: click first corner, aim second, click again. Shift+wheel adjusts height. R restarts; Esc cancels."),false);
@@ -100,6 +101,7 @@ public final class WorldSelectionClient {
         event.setCanceled(true);
         if(event.getAction()!=GLFW.GLFW_PRESS||waiting||!input.press(event.getButton()))return;
         if(hover==null){status="Aim at an actual building block.";return;}
+        if(mineMode){first=hover;second=hover;Minecraft.getInstance().setScreen(new BuildingClient.RegisterScreen(first,first,true));return;}
         if(second!=null){second=null;status="Adjust the second corner, then click again.";return;}
         if(first==null){first=hover;second=null;topLift=0;status="Move to the opposite corner; click to confirm the highlighted selection.";return;}
         if(!withinLimit()){status=registering?"Selection exceeds 64 per side or 32768 blocks.":"Selection exceeds 20 per side or 4096 blocks.";return;}
@@ -152,10 +154,16 @@ public final class WorldSelectionClient {
         Minecraft mc=Minecraft.getInstance();if(mc.player==null||mc.screen!=null)return;
         GuiGraphics g=event.getGuiGraphics();int cx=mc.getWindow().getGuiScaledWidth()/2,y=mc.getWindow().getGuiScaledHeight()-94;
         MinecraftMenu.panel(g,cx-175,y-12,cx+175,y+43);
-        g.drawCenteredString(mc.font,(registering?"REGISTER BUILDING  /  ":"BLUEPRINT SELECTION  /  ")+(first==null?"FIRST CORNER":"SECOND CORNER"),cx,y-6,0xFFFFFFFF);
+        g.drawCenteredString(mc.font,(registering?"REGISTER BUILDING  /  ":"BLUEPRINT SELECTION  /  ")+(mineMode?"MINE ENTRANCE RAIL":first==null?"FIRST CORNER":"SECOND CORNER"),cx,y-6,0xFFFFFFFF);
         g.drawCenteredString(mc.font,first==null?"Look at first block • Left click to start":metrics(),cx,y+7,first==null||withinLimit()?0xFF8DEA9A:0xFFFF7777);
         g.drawCenteredString(mc.font,"Left click confirm  •  Shift+wheel height  •  R restart  •  Esc cancel",cx,y+20,0xFFFFFFFF);
         g.drawCenteredString(mc.font,mc.font.plainSubstrByWidth(status,340),cx,y+32,0xFFFFFFFF);
+    }
+    private static final class ModeScreen extends Screen {
+        ModeScreen(){super(Component.literal("Architect Wand"));}
+        @Override protected void init(){int x=width/2-110,y=height/2;addRenderableWidget(Button.builder(Component.literal("Register building area"),b->selectMode(false)).bounds(x,y-20,220,22).build());addRenderableWidget(Button.builder(Component.literal("Select Mine Entrance rail"),b->selectMode(true)).bounds(x,y+8,220,22).build());}
+        @Override public void render(GuiGraphics g,int x,int y,float p){renderBackground(g);MinecraftMenu.panel(g,width/2-125,height/2-60,width/2+125,height/2+50);g.drawCenteredString(font,"ARCHITECT WAND",width/2,height/2-46,0xFFFFFFFF);super.render(g,x,y,p);}
+        @Override public boolean isPauseScreen(){return false;}
     }
     private static final class SaveScreen extends Screen {
         private EditBox name;

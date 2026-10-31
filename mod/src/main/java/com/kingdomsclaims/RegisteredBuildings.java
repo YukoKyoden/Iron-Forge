@@ -20,6 +20,7 @@ public final class RegisteredBuildings extends SavedData {
     public static final int MAX_VOLUME=32768,MAX_BUILDINGS=512;
     public static final class Building {
         public UUID id=UUID.randomUUID(),owner;public String dimension,type;public BlockPos min,max;
+        public boolean railMine=false;public BlockPos marker;public int halfIron=0;public transient Set<BlockPos> mineRails=Set.of();
         public int capacity=0;public boolean dirty=true;public long next=0;public transient long nextValidation=0;
         Building(UUID owner,String dim,String type,BlockPos min,BlockPos max){this.owner=owner;dimension=dim;this.type=type;this.min=min;this.max=max;}
         boolean contains(BlockPos p){return p.getX()>=min.getX()&&p.getX()<=max.getX()&&p.getY()>=min.getY()&&p.getY()<=max.getY()&&p.getZ()>=min.getZ()&&p.getZ()<=max.getZ();}
@@ -32,12 +33,12 @@ public final class RegisteredBuildings extends SavedData {
         for(Tag entry:root.getList("Buildings",Tag.TAG_COMPOUND)){
             CompoundTag t=(CompoundTag)entry;if(!t.hasUUID("Owner")||d.buildings.size()>=MAX_BUILDINGS)continue;
             Building b=new Building(t.getUUID("Owner"),t.getString("Dimension"),t.getString("Type"),BlockPos.of(t.getLong("Min")),BlockPos.of(t.getLong("Max")));
-            if(t.hasUUID("Id"))b.id=t.getUUID("Id");b.capacity=Math.max(0,t.getInt("Capacity"));b.dirty=t.getBoolean("Dirty");b.next=Math.max(0,t.getLong("Next"));if(previousInterval!=ProductionClock.TICKS&&(b.type.equals("farm")||b.type.equals("mine")||b.type.equals("lumber camp")))b.next=ProductionClock.upgradeDeadline(b.next,previousInterval);d.buildings.add(b);
+            if(t.hasUUID("Id"))b.id=t.getUUID("Id");b.capacity=Math.max(0,t.getInt("Capacity"));b.dirty=t.getBoolean("Dirty");b.next=Math.max(0,t.getLong("Next"));b.railMine=t.getBoolean("RailMine");b.marker=t.contains("Marker")?BlockPos.of(t.getLong("Marker")):null;b.halfIron=Math.max(0,Math.min(1,t.getInt("HalfIron")));if(previousInterval!=ProductionClock.TICKS&&(b.type.equals("farm")||b.type.equals("mine")||b.type.equals("lumber camp")))b.next=ProductionClock.upgradeDeadline(b.next,previousInterval);d.buildings.add(b);
         }if(previousInterval!=ProductionClock.TICKS)d.setDirty();return d;
     }
     @Override public CompoundTag save(CompoundTag root){root.putInt("ProductionIntervalTicks",ProductionClock.TICKS);ListTag list=new ListTag();for(Building b:buildings){
         CompoundTag t=new CompoundTag();t.putUUID("Id",b.id);t.putUUID("Owner",b.owner);t.putString("Dimension",b.dimension);t.putString("Type",b.type);
-        t.putLong("Min",b.min.asLong());t.putLong("Max",b.max.asLong());t.putLong("Next",b.next);t.putInt("Capacity",b.capacity);t.putBoolean("Dirty",b.dirty);list.add(t);
+        t.putBoolean("RailMine",b.railMine);if(b.marker!=null)t.putLong("Marker",b.marker.asLong());t.putInt("HalfIron",b.halfIron);t.putLong("Min",b.min.asLong());t.putLong("Max",b.max.asLong());t.putLong("Next",b.next);t.putInt("Capacity",b.capacity);t.putBoolean("Dirty",b.dirty);list.add(t);
     }root.put("Buildings",list);return root;}
     public static String type(String raw){String t=raw.toLowerCase(Locale.ROOT).replace('_',' ');return t.equals("lumber")?"lumber camp":t;}
     private static boolean known(String type){for(String t:TYPES)if(t.equalsIgnoreCase(type))return true;return false;}
@@ -72,16 +73,37 @@ public final class RegisteredBuildings extends SavedData {
         return null;
     }
     public Survey preview(ServerPlayer p,BlockPos a,BlockPos c,String type){if(p.distanceToSqr(a.getX(),a.getY(),a.getZ())>128*128||p.distanceToSqr(c.getX(),c.getY(),c.getZ())>128*128)return new Survey(0,"Select a building within 128 blocks.");var f=BlueprintService.atPlayer(p);if(f==null)return new Survey(0,"BUILD permission required in your claim.");
+        if(type(type).equals("mine"))return previewMine(p,a);
         Building b=selection(f.id(),KingdomData.dim(p.serverLevel()),a,c,type);String issue=issue(p.serverLevel(),b);
         if(issue!=null)return new Survey(0,issue);if(!canRegister(p,b))return new Survey(0,"BUILD permission required throughout selection.");return scan(p.serverLevel(),b);
     }
-    public String register(ServerPlayer p,BlockPos a,BlockPos c,String type){Survey survey=preview(p,a,c,type);if(survey.capacity<=0)return survey.detail;
+    public String register(ServerPlayer p,BlockPos a,BlockPos c,String type){if(type(type).equals("mine"))return registerMine(p,a);Survey survey=preview(p,a,c,type);if(survey.capacity<=0)return survey.detail;
         var f=BlueprintService.atPlayer(p);Building b=selection(f.id(),KingdomData.dim(p.serverLevel()),a,c,type);b.capacity=survey.capacity;b.dirty=false;b.next=p.server.overworld().getGameTime()+ProductionClock.TICKS;b.nextValidation=p.server.overworld().getGameTime()+ProductionClock.VALIDATION_TICKS;
         buildings.add(b);setDirty();return "Registered "+b.type+": "+survey.detail;
     }
     public String register(ServerLevel w,UUID owner,BlockPos a,BlockPos c,String type){Building b=selection(owner,KingdomData.dim(w),a,c,type);String issue=issue(w,b);if(issue!=null)return issue;Survey survey=scan(w,b);if(survey.capacity<=0)return survey.detail;b.capacity=survey.capacity;b.dirty=false;b.next=w.getServer().overworld().getGameTime()+ProductionClock.TICKS;b.nextValidation=w.getServer().overworld().getGameTime()+ProductionClock.VALIDATION_TICKS;buildings.add(b);setDirty();return "Registered "+b.type+": "+survey.detail;}
+    private Survey previewMine(ServerPlayer p,BlockPos entrance){
+        var f=BlueprintService.atPlayer(p);if(f==null)return new Survey(0,"BUILD permission required in your claim.");
+        if(buildings.stream().filter(x->x.railMine).count()>=32)return new Survey(0,"Registered mine limit reached (32).");
+        Building b=selection(f.id(),KingdomData.dim(p.serverLevel()),entrance,entrance,"mine");String issue=issue(p.serverLevel(),b);if(issue!=null)return new Survey(0,issue);
+        if(!canRegister(p,b))return new Survey(0,"BUILD permission required at the entrance.");
+        var r=RailMine.survey(p.serverLevel(),b.owner,entrance);if(r.sections()==0)return new Survey(0,"Select an entrance rail connected to clear 3x3 track at Y <= 32.");
+        for(Building old:buildings)if(old.railMine&&old.dimension.equals(b.dimension)){
+            var other=RailMine.survey(p.serverLevel(),old.owner,old.min);if(r.rails().stream().anyMatch(other.rails()::contains))return new Survey(0,"Track already belongs to another registered mine.");
+        }
+        BlockPos marker=RailMine.surface(p.serverLevel(),entrance);Building surface=selection(b.owner,b.dimension,marker,marker,"mine");
+        if(!canRegister(p,surface)||!p.serverLevel().getBlockState(marker).isAir()||!p.serverLevel().canSeeSky(marker)||marker.getY()>=p.serverLevel().getMaxBuildHeight())return new Survey(0,"Surface above entrance needs owned, empty space with open sky for its Mine Marker.");
+        return new Survey(r.sections(),r.detail());
+    }
+    private String registerMine(ServerPlayer p,BlockPos entrance){Survey check=previewMine(p,entrance);if(check.capacity<=0)return check.detail;
+        var f=BlueprintService.atPlayer(p);Building b=selection(f.id(),KingdomData.dim(p.serverLevel()),entrance,entrance,"mine");b.railMine=true;b.marker=RailMine.surface(p.serverLevel(),entrance);
+        b.capacity=check.capacity;b.dirty=false;b.next=p.server.overworld().getGameTime()+ProductionClock.TICKS;
+        if(!p.serverLevel().setBlock(b.marker,KingdomsClaims.MINE_MARKER.get().defaultBlockState(),3))return "Could not place surface Mine Marker.";
+        buildings.add(b);setDirty();return "Registered mine: "+check.detail+". Surface marker: "+b.marker.toShortString();
+    }
     private static boolean roof(ServerLevel w,BlockPos p,Building b){for(int dy=2;dy<=Math.min(8,b.max.getY()-p.getY());dy++)if(w.getBlockState(p.above(dy)).isSolidRender(w,p.above(dy)))return true;return false;}
     private static Survey scan(ServerLevel w,Building b){
+        if(b.type.equals("mine"))return RailMine.scan(w,b);
         int beds=0,plots=0,storage=0,logs=0,leaves=0,stone=0,air=0,doors=0,stations=0;
         for(BlockPos p:BlockPos.betweenClosed(b.min,b.max)){
             BlockState s=w.getBlockState(p);
@@ -103,7 +125,7 @@ public final class RegisteredBuildings extends SavedData {
             case "house"->new Survey(doors>0?beds:0,beds+" sheltered beds; an entrance door is required");
             case "farm"->new Survey(plots,plots+" hydrated wheat plots; +"+plots+" wheat/6 min (passive; crops stay planted)");
             case "warehouse"->new Survey(storage,storage+" storage slots (chests, barrels, standalone shelves)");
-            case "mine"->new Survey(stone>=24&&air>=12?Math.min(16,stone/24):0,"Needs 24 natural stone/ore blocks and 12 excavated underground spaces; +iron/coal every 6 minutes");
+            case "mine"->new Survey(0,"Select the first rail using Mine Entrance mode.");
             case "lumber camp"->new Survey(logs>=8&&leaves>=8?Math.min(32,logs/8):0,"Needs 8 tree logs and 8 leaves; +wood every 6 minutes");
             case "barracks"->new Survey(beds>0&&stations>0?beds*50:0,"Needs sheltered beds and a crafting, smithing or fletching table; "+(beds*50)+" troop capacity");
             default->new Survey(0,"Unknown building type");
@@ -115,7 +137,7 @@ public final class RegisteredBuildings extends SavedData {
     public int warehouseCapacity(MinecraftServer s,UUID owner){return sum(s,owner,"warehouse");}
     public int barracksCapacity(MinecraftServer s,UUID owner){return sum(s,owner,"barracks");}
     private int loadedProduction(MinecraftServer s,UUID owner,String type){UUID id=SharedStockpile.owner(s,owner);long n=0;for(Building b:buildings){if(!id.equals(SharedStockpile.owner(s,b.owner))||!b.type.equals(type)||!active(s,b))continue;var w=world(s,b.dimension);if(w!=null&&owned(w,b))n+=b.capacity;}return (int)Math.min(1_000_000,n);}
-    public int[] rates(MinecraftServer s,UUID owner){int[] rates=new int[OperationsData.GOODS.length];rates[0]=loadedProduction(s,owner,"mine");rates[1]=rates[0];rates[2]=loadedProduction(s,owner,"lumber camp");rates[3]=loadedProduction(s,owner,"farm");rates[4]=rates[0]*2;return rates;}
+    public int[] rates(MinecraftServer s,UUID owner){int[] rates=new int[OperationsData.GOODS.length];rates[0]=loadedProduction(s,owner,"mine")/2;rates[1]=0;rates[2]=loadedProduction(s,owner,"lumber camp");rates[3]=loadedProduction(s,owner,"farm");rates[4]=0;return rates;}
     public List<Building> of(MinecraftServer s,UUID owner){UUID id=SharedStockpile.owner(s,owner);return buildings.stream().filter(b->id.equals(SharedStockpile.owner(s,b.owner))).toList();}
     public boolean remove(ServerPlayer p,String id){Building b=buildings.stream().filter(x->x.id.toString().equals(id)).findFirst().orElse(null);if(b==null||!b.dimension.equals(KingdomData.dim(p.serverLevel()))||!canRegister(p,b))return false;buildings.remove(b);setDirty();return true;}
     public void tick(MinecraftServer s){
@@ -128,14 +150,14 @@ public final class RegisteredBuildings extends SavedData {
             boolean produce=now>=b.next;Survey survey=scan(w,b);b.capacity=survey.capacity;b.dirty=false;
             if(produce&&b.capacity>0){int cap=PhysicalWarehouses.sharedCapacity(s,b.owner);SharedStockpile stock=SharedStockpile.get(s);
                 if(b.type.equals("farm"))ProductionData.record(s,b.owner,"WHEAT",stock.add(b.owner,"WHEAT",b.capacity,cap));
-                if(b.type.equals("mine")){ProductionData.record(s,b.owner,"IRON",stock.add(b.owner,"IRON",b.capacity,cap));ProductionData.record(s,b.owner,"COAL",stock.add(b.owner,"COAL",b.capacity,cap));ProductionData.record(s,b.owner,"STONE",stock.add(b.owner,"STONE",b.capacity*2,cap));}
+                if(b.type.equals("mine")){int iron=RailNetwork.wholeIron(b.capacity,b.halfIron);b.halfIron=RailNetwork.carry(b.capacity,b.halfIron);ProductionData.record(s,b.owner,"IRON",stock.add(b.owner,"IRON",iron,cap));}
                 if(b.type.equals("lumber camp"))ProductionData.record(s,b.owner,"LOGS",stock.add(b.owner,"LOGS",b.capacity,cap));
             }
             b.nextValidation=now+ProductionClock.VALIDATION_TICKS;if(produce)b.next=now+ProductionClock.TICKS;setDirty();break;
         }
         if(cursor>1000000)cursor=0;
     }
-    public void changed(ServerLevel w,BlockPos p){boolean found=false;for(Building b:buildings)if(b.dimension.equals(KingdomData.dim(w))&&b.contains(p)){b.capacity=0;b.dirty=true;found=true;}if(found)setDirty();}
+    public void changed(ServerLevel w,BlockPos p){boolean found=false;for(Building b:buildings)if(b.dimension.equals(KingdomData.dim(w))&&(b.type.equals("mine")?(b.marker!=null&&p.getX()==b.marker.getX()&&p.getZ()==b.marker.getZ()&&p.getY()>=b.marker.getY()||Math.abs(p.getX()-b.min.getX())<=129&&Math.abs(p.getZ()-b.min.getZ())<=129):b.contains(p))){b.capacity=0;b.dirty=true;found=true;}if(found)setDirty();}
     @SubscribeEvent public static void notified(BlockEvent.NeighborNotifyEvent e){if(!e.isCanceled()&&e.getLevel() instanceof ServerLevel w)get(w.getServer()).changed(w,e.getPos());}
     @SubscribeEvent public static void exploded(net.minecraftforge.event.level.ExplosionEvent.Detonate e){if(e.getLevel() instanceof ServerLevel w)for(BlockPos p:e.getAffectedBlocks())get(w.getServer()).changed(w,p);}
     @SubscribeEvent public static void placed(BlockEvent.EntityPlaceEvent e){if(!e.isCanceled()&&e.getLevel() instanceof ServerLevel w)get(w.getServer()).changed(w,e.getPos());}

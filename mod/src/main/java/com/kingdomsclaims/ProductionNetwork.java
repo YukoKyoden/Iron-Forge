@@ -28,7 +28,7 @@ public final class ProductionNetwork {
         static View read(FriendlyByteBuf b){String name=b.readUtf(40);int[][] a=new int[4][8];for(int[] row:a)for(int i=0;i<8;i++)row[i]=b.readVarInt();int n=b.readVarInt();if(n<0||n>600)throw new IllegalArgumentException("Production sources too large");List<Source> sources=new ArrayList<>();for(int i=0;i<n;i++)sources.add(Source.read(b));return new View(name,a[0],a[1],a[2],a[3],sources,b.readBoolean());}
         static void handle(View r,Supplier<NetworkEvent.Context> supplier){var c=supplier.get();c.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->ProductionClient.accept(r)));c.setPacketHandled(true);}
     }
-    private static int mask(String type){return switch(type){case "farm"->8;case "mine"->1|2|16;case "lumber camp"->4;default->0;};}
+    private static int mask(String type){return switch(type){case "farm"->8;case "mine"->1;case "lumber camp"->4;default->0;};}
     public static void open(ServerPlayer p){
         var f=BarracksService.faction(p.serverLevel(),p.blockPosition());if(f==null)return;var server=p.server;var land=KingdomData.get(server);UUID owner=SharedStockpile.owner(server,f.id());var k=land.kingdoms.get(owner);var t=land.towns.get(f.id());
         if(!(k!=null&&k.rank(p.getUUID())>0||t!=null&&t.rank(p.getUUID())>0)){p.displayClientMessage(Component.literal("View production inside your own kingdom or town."),true);return;}
@@ -40,8 +40,9 @@ public final class ProductionNetwork {
             else if(b.dirty)status="Paused: waiting for building validation";
             else if(b.capacity<=0)status="Paused: invalid building; check its requirements";
             else if(full)status="Paused: stockpile full";
+            else if(b.type.equals("mine"))status=b.capacity+" sections: "+(b.capacity/2.0)+" iron/6m; carry "+(b.halfIron/2.0);
             else status=b.type.equals("farm")?"Passive wheat output; visible crops stay planted":"Producing automatically";
-            boolean running=!status.startsWith("Paused");int[] maximum=new int[8];if(b.type.equals("farm"))maximum[3]=b.capacity;if(b.type.equals("mine")){maximum[0]=b.capacity;maximum[1]=b.capacity;maximum[4]=b.capacity*2;}if(b.type.equals("lumber camp"))maximum[2]=b.capacity;
+            boolean running=!status.startsWith("Paused");int[] maximum=new int[8];if(b.type.equals("farm"))maximum[3]=b.capacity;if(b.type.equals("mine")){maximum[0]=(b.capacity+b.halfIron)/2;}if(b.type.equals("lumber camp"))maximum[2]=b.capacity;
             sources.add(new Source(b.type,b.dimension+" "+b.min.toShortString(),mask,maximum,status,(int)Math.min(3600,Math.max(0,(b.next-now+19)/20)),running));
         }
         // Optional military outposts still supply resources; display them separately from registered structures.

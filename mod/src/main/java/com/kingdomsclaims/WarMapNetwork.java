@@ -18,7 +18,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 /** Unified War Table: terrain and server-authorized army actions on one screen. */
 public final class WarMapNetwork {
     private WarMapNetwork(){}
-    private static final String VERSION="2";
+    private static final String VERSION="3";
     public static final SimpleChannel CHANNEL=NetworkRegistry.newSimpleChannel(new ResourceLocation(KingdomsClaims.MODID,"war_map"),()->VERSION,VERSION::equals,VERSION::equals);
     public static void register(){
         CHANNEL.registerMessage(0,Request.class,Request::write,Request::read,Request::handle);
@@ -60,7 +60,7 @@ public final class WarMapNetwork {
             b.writeUtf(s.faction,80);b.writeUtf(s.type,12);b.writeVarInt(s.reserves);b.writeVarInt(s.assigned());b.writeBoolean(s.authorized);b.writeUtf(s.message,160);
             b.writeVarInt(s.armies.size());
             for(var a:s.armies){b.writeUUID(a.id());b.writeUtf(a.name(),30);b.writeVarInt(a.strength());b.writeVarInt(a.fielded());
-                b.writeUtf(a.formation(),12);b.writeVarInt(a.uniform());b.writeInt(a.x());b.writeInt(a.z());b.writeInt(a.rallyX());b.writeInt(a.rallyZ());b.writeBoolean(a.marching());b.writeVarInt(a.secondsRemaining());}
+                b.writeUtf(a.formation(),12);b.writeVarInt(a.uniform());b.writeInt(a.x());b.writeInt(a.z());b.writeInt(a.rallyX());b.writeInt(a.rallyZ());b.writeBoolean(a.marching());b.writeVarInt(a.secondsRemaining());b.writeUtf(a.order(),12);}
         }
         static Snapshot read(FriendlyByteBuf b){
             BlockPos table=b.readBlockPos();int cx=b.readInt(),cz=b.readInt();
@@ -71,7 +71,7 @@ public final class WarMapNetwork {
             int n=b.readVarInt();if(n<0||n>15)throw new IllegalArgumentException("Invalid army list size");
             List<WarTableNetwork.ArmyInfo> armies=new ArrayList<>();
             for(int i=0;i<n;i++)armies.add(new WarTableNetwork.ArmyInfo(b.readUUID(),b.readUtf(30),b.readVarInt(),b.readVarInt(),b.readUtf(12),b.readVarInt(),
-                b.readInt(),b.readInt(),b.readInt(),b.readInt(),b.readBoolean(),b.readVarInt()));
+                b.readInt(),b.readInt(),b.readInt(),b.readInt(),b.readBoolean(),b.readVarInt(),b.readUtf(12)));
             return new Snapshot(table,cx,cz,terrain,claims,faction,type,reserves,assigned,authorized,message,armies);
         }
         static void handle(Snapshot s,Supplier<NetworkEvent.Context> supplier){var ctx=supplier.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->WarMapClient.accept(s)));ctx.setPacketHandled(true);}
@@ -106,7 +106,7 @@ public final class WarMapNetwork {
         for(var a:military.armiesOf(faction.id()))if(a.dimension.equals(dimension)){
             armies.add(new WarTableNetwork.ArmyInfo(a.id,a.name,a.strength,a.fielded,a.formation,a.uniform,
                 (int)Math.round(a.locationX),(int)Math.round(a.locationZ),a.rallyX,a.rallyZ,a.marching,
-                (int)Math.ceil(Math.hypot(a.rallyX-a.locationX,a.rallyZ-a.locationZ)/1.5)));
+                (int)Math.ceil(Math.hypot(a.rallyX-a.locationX,a.rallyZ-a.locationZ)/1.5),a.order));
         }
         CHANNEL.send(PacketDistributor.PLAYER.with(()->p),new Snapshot(table,cx,cz,terrain,claims,faction.name(),faction.type(),military.reserve(faction.id()),military.assigned(faction.id()),true,message,armies));
         OperationsNetwork.send(p,table,cx,cz);

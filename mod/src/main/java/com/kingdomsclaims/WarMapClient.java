@@ -29,7 +29,7 @@ public final class WarMapClient {
         private boolean missions=false,treasury=false;
         private int goodIndex=0,caravanX,caravanZ;
         private double viewX,viewZ,zoom=20.0;
-        private boolean dragging=false,showClaims=true,marchArmed=false;
+        private boolean dragging=false,dragMoved=false,showClaims=true;private int refreshTicks=0;private double dragStartX,dragStartY;private String nameDraft="";
         private int rosterScroll=0,actionScroll=0;
         private String localMessage="";
         private EditBox armyName;
@@ -39,7 +39,7 @@ public final class WarMapClient {
             if(!snap.armies().isEmpty())selected=snap.armies().get(0).id();
         }
         void applyOperations(OperationsNetwork.Snapshot snap){
-            operations=snap;
+            if(armyName!=null)nameDraft=armyName.getValue();operations=snap;
             if(selectedSite!=null&&snap.sites().stream().noneMatch(x->x.id().equals(selectedSite)))selectedSite=null;
             if(selectedCaravan!=null&&snap.caravans().stream().noneMatch(x->x.id().equals(selectedCaravan)))selectedCaravan=null;
             clearWidgets();init();
@@ -51,8 +51,9 @@ public final class WarMapClient {
         private void siteCommand(String action){if(selected!=null&&selectedSite!=null)operationCommand(action,selected+"|"+selectedSite);}
         private void caravanCommand(String action){if(selected!=null&&selectedCaravan!=null)operationCommand(action,selected+"|"+selectedCaravan);}
         void apply(WarMapNetwork.Snapshot snap){
-            String name=armyName==null?"":armyName.getValue();
-            data=snap;
+            String name=armyName==null?nameDraft:armyName.getValue();
+            var previous=data;data=snap;
+            if(snap.message().startsWith("Created "))for(var candidate:snap.armies())if(previous.armies().stream().noneMatch(old->old.id().equals(candidate.id())))selected=candidate.id();
             if(selected==null||snap.armies().stream().noneMatch(a->a.id().equals(selected)))selected=snap.armies().isEmpty()?null:snap.armies().get(0).id();
             clearWidgets();init();if(armyName!=null)armyName.setValue(name);
         }
@@ -109,9 +110,6 @@ public final class WarMapClient {
             button("Home",mapLeft()+57,12,48,"Center on command building",()->{viewX=data.table().getX()/16.0;viewZ=data.table().getZ()/16.0;refresh();},true);
             button("Borders",mapLeft()+108,12,56,"Toggle territory outlines",()->showClaims=!showClaims,true);
             button("Refresh",mapLeft()+167,12,58,"Refresh explored terrain and army positions",this::refresh,true);
-            if(mapRight()-mapLeft()>338)button(marchArmed?"MOVE: ARMED":"MOVE: OFF",mapLeft()+228,12,99,
-                "Arm one manual map march. Clicking bare terrain sends a single move order, then disarms to prevent accidental marches.",
-                ()->{marchArmed=!marchArmed;localMessage=marchArmed?"Click a bare map location to march (one order).":"Manual march disabled.";clearWidgets();init();},true);
             if(managerOrigin())button("City View",width-112,9,81,"Return to the 3D Kingdom Planner",()->KingdomOverviewClient.returnFromWarMap(data.table()),true);
             button("X",width-26,9,20,"Close map to Minecraft",this::onClose,true);
             int third=(sw-10)/3;
@@ -135,7 +133,7 @@ public final class WarMapClient {
                 return;
             }
             armyName=new EditBox(font,sx,48,Math.max(75,sw-67),18,Component.literal("New army name"));
-            armyName.setMaxLength(24);armyName.setHint(Component.literal("New army name"));addRenderableWidget(armyName);
+            armyName.setValue(nameDraft);armyName.setMaxLength(24);armyName.setHint(Component.literal("New army name"));addRenderableWidget(armyName);
             button("Create",width-73,47,57,"Create up to 15 named armies",()->command("create",armyName.getValue()),data.authorized());
             int top=rosterTop();
             int count=rosterRows();
@@ -197,34 +195,16 @@ public final class WarMapClient {
                     continue;
                 }
                 switch(row){
-                    case 0->{
-                        button("Assign +10",sx,y,half,"Move 10 from reserve to this army at headquarters",()->commandSelected("assign10"),ok&&data.reserves()>=10);
-                        button("Assign +50",sx+half+5,y,half,"Move 50 from reserve to this army at headquarters",()->commandSelected("assign50"),ok&&data.reserves()>=50);
-                    }
-                    case 1->{
-                        button("Return -10",sx,y,half,"Return 10 soldiers to reserve at HQ",()->commandSelected("return10"),ok&&a.strength()>=10);
-                        button("Return -50",sx+half+5,y,half,"Return 50 soldiers to reserve at HQ",()->commandSelected("return50"),ok&&a.strength()>=50);
-                    }
-                    case 2->button("Formation: "+(a==null?"—":a.formation()),sx,y,sw,"Cycle column, line, and wedge formations",()->{if(a!=null)commandSelected("formation",a.formation().equals("column")?"line":a.formation().equals("line")?"wedge":"column");},ok);
-                    case 3->button("Uniform: "+(a==null?"—":UNIFORMS[Math.max(0,Math.min(a.uniform(),3))]),sx,y,sw,"Cycle four custom uniform textures, no armor models",()->{if(a!=null)commandSelected("uniform",String.valueOf((a.uniform()+1)%4));},ok);
-                    case 4->{
-                        button("Hold",sx,y,half,"Stop the selected numerical army at its current position",()->commandSelected("hold"),ok);
-                        button("Return HQ",sx+half+5,y,half,"March back to original War Table, not teleport",()->commandSelected("home"),ok&&a.fielded()==0);
-                    }
-                    case 5->{
-                        button("Split 1/2",sx,y,half,"Split stationed army in half",()->commandSelected("split"),ok&&a.strength()>=2&&a.fielded()==0);
-                        button("Disband",sx+half+5,y,half,"Disband empty army only",()->commandSelected("disband"),ok&&a.strength()==0&&a.fielded()==0);
-                    }
-                    case 6->{
-                        button("Deploy 1",sx,y,half,"Physical soldiers require the War Table block",()->commandSelected("deploy1"),ok&&a.strength()>=1&&!managerOrigin());
-                        button("Deploy 5",sx+half+5,y,half,"Physical soldiers require the War Table block",()->commandSelected("deploy5"),ok&&a.strength()>=5&&!managerOrigin());
-                    }
-                    case 7->{
-                        button("Recall",sx,y,half,"Physical soldier recall requires a War Table",()->commandSelected("recall"),ok&&a.fielded()>0&&!managerOrigin());
-                        button("Refresh",sx+half+5,y,half,"Update troop counts and army location",this::refresh,true);
-                    }
-                    case 8->button("Center selected army",sx,y,sw,"Move your map view to the selected army",()->{if(a!=null){viewX=a.x()/16.0;viewZ=a.z()/16.0;refresh();}},a!=null);
-                    case 9->button("Center on War Table",sx,y,sw,"Return map view to your War Table",()->{viewX=data.table().getX()/16.0;viewZ=data.table().getZ()/16.0;refresh();},true);
+                    case 0->{button("Hold",sx,y,half,"Hold this location and defend nearby",()->commandSelected("hold"),ok);button("Follow",sx+half+5,y,half,"Follow your player; stops safely if you disconnect",()->commandSelected("follow"),ok);}
+                    case 1->{button("Retreat",sx,y,half,"Return to headquarters; ignore combat while retreating",()->commandSelected("home"),ok);button("Center squad",sx+half+5,y,half,"Center map on selected squad",()->{if(a!=null){viewX=a.x()/16.0;viewZ=a.z()/16.0;refresh();}},ok);}
+                    case 2->{button("Recruit +10",sx,y,half,"30 iron + 180 wheat; requires nearby registered barracks",()->commandSelected("recruit10"),ok);button("Recruit +50",sx+half+5,y,half,"150 iron + 900 wheat; directly adds troops to squad",()->commandSelected("recruit50"),ok);}
+                    case 3->{button("Reserve +10",sx,y,half,"Use existing reserve troops at this control point",()->commandSelected("assign10"),ok&&data.reserves()>=10);button("Reserve +50",sx+half+5,y,half,"Use 50 existing reserve troops",()->commandSelected("assign50"),ok&&data.reserves()>=50);}
+                    case 4->button("Formation: "+(a==null?"—":a.formation()),sx,y,sw,"Cycle column, line, and wedge",()->{if(a!=null)commandSelected("formation",a.formation().equals("column")?"line":a.formation().equals("line")?"wedge":"column");},ok);
+                    case 5->button("Uniform: "+(a==null?"—":UNIFORMS[Math.max(0,Math.min(a.uniform(),3))]),sx,y,sw,"Cycle squad uniform",()->{if(a!=null)commandSelected("uniform",String.valueOf((a.uniform()+1)%4));},ok);
+                    case 6->button("Split squad in half",sx,y,sw,"Hold and gather physical soldiers first",()->commandSelected("split"),ok);
+                    case 7->{button("Return 10",sx,y,half,"Return troops to reserve at headquarters",()->commandSelected("return10"),ok);button("Return 50",sx+half+5,y,half,"Return troops to reserve at headquarters",()->commandSelected("return50"),ok);}
+                    case 8->button("Gather soldiers",sx,y,sw,"Return all loaded surviving soldiers to the squad ledger while holding",()->commandSelected("gather"),ok);
+                    case 9->button("Disband empty squad",sx,y,sw,"Requires no assigned or deployed troops",()->commandSelected("disband"),ok&&a.strength()+a.fielded()==0);
                 }
             }
         }
@@ -306,7 +286,7 @@ public final class WarMapClient {
         private void drawSidebar(GuiGraphics g){
             int sx=sideX(),inner=sx+7,sw=width-inner-8;
             MinecraftMenu.panel(g,sx,0,width,height);
-            g.drawString(font,treasury?"LOCAL WAREHOUSE":missions?"KINGDOM OPERATIONS":"WAR TABLE",inner,10,0xFF404040,false);
+            g.drawString(font,treasury?"LOCAL WAREHOUSE":missions?"KINGDOM OPERATIONS":"SQUAD COMMAND",inner,10,0xFF404040,false);
             g.drawString(font,clip(data.faction()+" ("+data.type()+")",sw-20),inner,26,0xFF404040,false);
             g.drawString(font,"Reserve "+data.reserves()+"  /  Assigned "+data.assigned(),inner,38,0xFF404040,false);
             if(treasury){
@@ -335,9 +315,9 @@ public final class WarMapClient {
                 }
                 return;
             }
-            g.drawString(font,"ARMIES   "+data.armies().size()+" / 15",inner,97,0xFF404040,false);
+            g.drawString(font,"SQUADS   "+data.armies().size()+" / 15",inner,97,0xFF404040,false);
             if(data.armies().isEmpty()){
-                g.drawString(font,"Create an army above to begin",inner+4,rosterTop()+6,0xFF404040,false);
+                g.drawString(font,"Create a squad above to begin",inner+4,rosterTop()+6,0xFF404040,false);
             }
             var a=army();
             int summaryY=summaryTop();
@@ -352,8 +332,8 @@ public final class WarMapClient {
                 g.drawString(font,clip(line3,sw-12),inner+5,summaryY+27,0xFF404040,false);
             }else if(a!=null){
                 g.drawString(font,clip(a.name(),sw-12),inner+5,summaryY+5,0xFF404040,false);
-                g.drawString(font,clip(a.strength()+" ready + "+a.fielded()+" deployed",sw-12),inner+5,summaryY+16,0xFF404040,false);
-                g.drawString(font,clip("X "+a.x()+"  Z "+a.z()+"  "+(a.marching()?"MARCHING":"HOLD"),sw-12),inner+5,summaryY+27,0xFF404040,false);
+                g.drawString(font,clip((a.strength()+a.fielded())+" troops / "+a.fielded()+" represented",sw-12),inner+5,summaryY+16,0xFF404040,false);
+                g.drawString(font,clip("X "+a.x()+"  Z "+a.z()+"  "+a.order().toUpperCase(),sw-12),inner+5,summaryY+27,0xFF404040,false);
             }else g.drawString(font,"Select or create an army",inner+5,summaryY+12,0xFF404040,false);
             g.drawString(font,missions?"MISSIONS / CARAVANS (scroll)":"ORDERS (scroll to see more)",inner,ordersLabelY(),0xFF404040,false);
             int visible=visibleOrderRows();
@@ -361,13 +341,13 @@ public final class WarMapClient {
                 int secs=operations.secondsLeft();String upkeep="5m upkeep "+operations.ironDue()+" iron / "+operations.wheatDue()+" wheat  "+(secs/60)+":"+String.format("%02d",secs%60);
                 g.drawString(font,clip(upkeep,sw-7),inner,height-29,operations.funded()?0xFF246B26:0xFFA01919,false);
             }else g.drawString(font,"Orders "+(visible==0?0:actionScroll+1)+"-"+Math.min(10,actionScroll+visible)+" / 10",inner,height-29,0xFF404040,false);
-            g.drawString(font,missions?(operations!=null&&!operations.funded()?"UNFUNDED: operations paused":"Click sites or caravan targets"):(marchArmed?"ARMED: click bare map to march":"Press MOVE: OFF to enable marches"),inner,height-17,0xFF404040,false);
+            g.drawString(font,missions?(operations!=null&&!operations.funded()?"UNFUNDED: operations paused":"Click sites or caravan targets"):"Left select / Right click move or attack",inner,height-17,0xFF404040,false);
         }
         @Override public void render(GuiGraphics g,int mx,int my,float partial){
             renderBackground(g);MinecraftMenu.panel(g,0,0,width,height);
             drawMap(g);drawSidebar(g);
             g.drawString(font,"WORLD MAP  •  "+clip(data.faction(),95),mapLeft()+3,3,0xFF404040,false);
-            g.drawString(font,"Click icons: inspect  |  Right drag: pan  |  Wheel: zoom",mapLeft()+7,height-34,0xFF404040,false);
+            g.drawString(font,"Left: select | Right: order / drag pan | Wheel: zoom",mapLeft()+7,height-34,0xFF404040,false);
             g.drawString(font,"Green kingdom / Blue town / Red other / Dark unexplored",mapLeft()+7,height-21,0xFF404040,false);
             if(insideMap(mx,my)){
                 int x=(int)Math.floor((viewX+(mx-midX())/zoom)*16.0),z=(int)Math.floor((viewZ+(my-midY())/zoom)*16.0);
@@ -384,12 +364,13 @@ public final class WarMapClient {
             if(!treasury)for(int i=rosterScroll;i<Math.min(data.armies().size(),rosterScroll+rosterRows());i++){
                 if(data.armies().get(i).id().equals(selected))outline(g,sx,rosterTop()+(i-rosterScroll)*23,sw,20,0xFFFFFFFF);
             }
-            if(marchArmed&&mapRight()-mapLeft()>338)outline(g,mapLeft()+228,12,99,20,0xFFFFE599);
+
         }
         @Override public boolean mouseClicked(double mx,double my,int b){
             // Widget hit-testing must happen first: buttons and text entry never issue map orders.
             if(super.mouseClicked(mx,my,b))return true;
-            if(b==1&&insideMap(mx,my)){dragging=true;return true;}
+            if(b==1&&insideMap(mx,my)){dragging=true;dragMoved=false;dragStartX=mx;dragStartY=my;return true;}
+            if(b==2&&insideMap(mx,my)){dragging=true;dragMoved=true;return true;}
             if(b==0&&insideMap(mx,my)){
                 if(operations!=null){
                     for(var site:operations.sites())if(Math.hypot(screenX(site.x())-mx,screenY(site.z())-my)<12){selectedSite=site.id();selectedCaravan=null;missions=true;treasury=false;localMessage="Selected "+site.type()+" site";clearWidgets();init();return true;}
@@ -397,22 +378,16 @@ public final class WarMapClient {
                 }
                 if(missions||treasury){caravanX=(int)Math.floor((viewX+(mx-midX())/zoom)*16);caravanZ=(int)Math.floor((viewZ+(my-midY())/zoom)*16);localMessage="Caravan destination X "+caravanX+" Z "+caravanZ;return true;}
                 for(var a:data.armies())if(Math.hypot(screenX(a.x())-mx,screenY(a.z())-my)<9){selected=a.id();localMessage="Selected "+a.name();clearWidgets();init();return true;}
-                var a=army();if(a==null){localMessage="Select or create an army on the right.";return true;}
-                if(!data.authorized()){localMessage="No permission to command armies.";return true;}
-                if(!marchArmed){localMessage="Enable MOVE: OFF at the top before sending a march. This prevents accidental orders.";return true;}
-                marchArmed=false;
-                int x=(int)Math.floor((viewX+(mx-midX())/zoom)*16),z=(int)Math.floor((viewZ+(my-midY())/zoom)*16);
-                localMessage="March ordered: "+a.name()+" → "+x+", "+z;
-                WarMapNetwork.CHANNEL.sendToServer(new WarMapNetwork.Order(data.table(),a.id(),x,z,centerChunkX(),centerChunkZ()));return true;
+                localMessage="Right-click a destination to order the selected squad.";return true;
             }
             return false;
         }
         @Override public boolean mouseDragged(double mx,double my,int button,double dx,double dy){
-            if(button==1&&dragging){viewX-=dx/zoom;viewZ-=dy/zoom;return true;}
+            if((button==1||button==2)&&dragging){if(button==2||Math.hypot(mx-dragStartX,my-dragStartY)>4)dragMoved=true;if(dragMoved){viewX-=dx/zoom;viewZ-=dy/zoom;}return true;}
             return super.mouseDragged(mx,my,button,dx,dy);
         }
         @Override public boolean mouseReleased(double mx,double my,int button){
-            if(button==1&&dragging){dragging=false;refresh();return true;}
+            if((button==1||button==2)&&dragging){dragging=false;if(dragMoved){refresh();return true;}if(button==1&&!missions&&!treasury&&insideMap(mx,my)){var a=army();if(a==null)return true;int x=(int)Math.floor((viewX+(mx-midX())/zoom)*16),z=(int)Math.floor((viewZ+(my-midY())/zoom)*16);int dx=(x>>4)-data.cx()+WarMapData.SIZE/2,dz=(z>>4)-data.cz()+WarMapData.SIZE/2;boolean enemy=dx>=0&&dz>=0&&dx<WarMapData.SIZE&&dz<WarMapData.SIZE&&data.claims().length==WarMapData.SIZE*WarMapData.SIZE&&data.claims()[dz*WarMapData.SIZE+dx]>=3;commandSelected(enemy?"attack":"march",x+"|"+z);return true;}return true;}
             return super.mouseReleased(mx,my,button);
         }
         @Override public boolean mouseScrolled(double mx,double my,double delta){
@@ -429,6 +404,8 @@ public final class WarMapClient {
             }
             return super.mouseScrolled(mx,my,delta);
         }
+        @Override public void tick(){if(++refreshTicks%60==0&&!(armyName!=null&&armyName.isFocused()))refresh();}
+        @Override public boolean keyPressed(int key,int scan,int modifiers){if(key==org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE&&selected!=null){selected=null;clearWidgets();init();return true;}return super.keyPressed(key,scan,modifiers);}
         @Override public boolean isPauseScreen(){return false;}
     }
 }

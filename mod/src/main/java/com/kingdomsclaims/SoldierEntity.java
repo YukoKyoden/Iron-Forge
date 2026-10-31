@@ -41,6 +41,7 @@ public final class SoldierEntity extends PathfinderMob {
     private UUID captain;
     private boolean following=false;
     private boolean rosterBound=false;
+    private int troopWeight=1;public int representedTroops(){return troopWeight;}public UUID faction(){return factionId;}
     private UUID armyId; private String formation="column"; private int slot=0;
 
     public SoldierEntity(EntityType<? extends SoldierEntity> type, Level world){super(type,world);}
@@ -62,11 +63,14 @@ public final class SoldierEntity extends PathfinderMob {
     public void assignArmy(UUID army,int uniform,String form,int position,ServerPlayer commander){
         armyId=army;rosterBound=true;slot=position;formation=form;setUniform(uniform);command(commander,true);
     }
+    public void assignSquad(UUID army,int uniform,String form,int position,int weight){armyId=army;rosterBound=true;formation=form;slot=position;setUniform(uniform);troopWeight=Math.max(1,Math.min(10,weight));following=false;captain=null;getAttribute(Attributes.MAX_HEALTH).setBaseValue(24D*troopWeight);setHealth(getMaxHealth());getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(5D*troopWeight);}
+    private MilitaryData.Army squad(){return armyId!=null&&level() instanceof ServerLevel w?MilitaryData.get(w.getServer()).armies.get(armyId):null;}
+    private boolean squadOrders(){var a=squad();return a!=null&&!a.order.equals("legacy");}
     public void changeFormation(String form){formation=form;}
     @Override public void die(net.minecraft.world.damagesource.DamageSource source){
         if(!level().isClientSide&&armyId!=null&&level() instanceof ServerLevel server){
             MilitaryData d=MilitaryData.get(server.getServer());MilitaryData.Army a=d.armies.get(armyId);
-            if(a!=null&&a.fielded>0){a.fielded--;d.setDirty();}
+            if(a!=null&&a.fielded>0){a.fielded=Math.max(0,a.fielded-troopWeight);d.setDirty();}
             armyId=null; // Never restore a casualty to reserve.
         }
         super.die(source);
@@ -87,18 +91,20 @@ public final class SoldierEntity extends PathfinderMob {
     }
     @Override protected void registerGoals(){
         goalSelector.addGoal(0,new FloatGoal(this));
-        goalSelector.addGoal(1,new MeleeAttackGoal(this,1.12D,true));
+        goalSelector.addGoal(1,new SquadOrder());
+        goalSelector.addGoal(2,new MeleeAttackGoal(this,1.12D,true));
         goalSelector.addGoal(2,new FollowCaptain());
         goalSelector.addGoal(3,new ReturnHome());
         goalSelector.addGoal(6,new WaterAvoidingRandomStrollGoal(this,0.75D,0.005F));
         goalSelector.addGoal(7,new LookAtPlayerGoal(this,Player.class,9f));
         goalSelector.addGoal(8,new RandomLookAroundGoal(this));
-        targetSelector.addGoal(1,new NearestAttackableTargetGoal<>(this,Monster.class,true));
+        targetSelector.addGoal(1,new NearestAttackableTargetGoal<>(this,SoldierEntity.class,10,true,false,e->e instanceof SoldierEntity enemy&&enemy.faction()!=null&&factionId!=null&&squad()!=null&&squad().order.equals("attack")&&!SharedStockpile.owner(((ServerLevel)level()).getServer(),enemy.faction()).equals(SharedStockpile.owner(((ServerLevel)level()).getServer(),factionId))));
+        targetSelector.addGoal(2,new NearestAttackableTargetGoal<>(this,Monster.class,true));
     }
     @Override public void aiStep(){
         super.aiStep();
         // Home patrol: no free cross-country wandering while defending.
-        if(!level().isClientSide&&!following&&tickCount%100==0 && distanceToSqr(Vec3.atCenterOf(barracks))>20*20){
+        if(!level().isClientSide&&!squadOrders()&&!following&&tickCount%100==0 && distanceToSqr(Vec3.atCenterOf(barracks))>20*20){
             getNavigation().moveTo(barracks.getX()+.5,barracks.getY()+1,barracks.getZ()+.5,1.12);
         }
     }
@@ -109,7 +115,7 @@ public final class SoldierEntity extends PathfinderMob {
         tag.putString("KC_FactionType",factionType);
         tag.putInt("KC_HomeX",barracks.getX());tag.putInt("KC_HomeY",barracks.getY());tag.putInt("KC_HomeZ",barracks.getZ());
         if(captain!=null)tag.putUUID("KC_Captain",captain);
-        tag.putBoolean("KC_Follow",following);
+        tag.putInt("KC_TroopWeight",troopWeight);tag.putBoolean("KC_Follow",following);
         tag.putBoolean("KC_RosterBound",rosterBound);
         if(armyId!=null)tag.putUUID("KC_Army",armyId);
         tag.putInt("KC_Uniform",getUniform());tag.putString("KC_Formation",formation);tag.putInt("KC_Slot",slot);
@@ -125,15 +131,32 @@ public final class SoldierEntity extends PathfinderMob {
         armyId=tag.hasUUID("KC_Army")?tag.getUUID("KC_Army"):null;
         setUniform(tag.contains("KC_Uniform")?tag.getInt("KC_Uniform"):-1);
         String form=tag.getString("KC_Formation");formation=java.util.List.of("line","column","wedge").contains(form)?form:"column";
-        slot=tag.getInt("KC_Slot");
+        slot=tag.getInt("KC_Slot");troopWeight=Math.max(1,Math.min(10,tag.getInt("KC_TroopWeight")));getAttribute(Attributes.MAX_HEALTH).setBaseValue(24D*troopWeight);getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(5D*troopWeight);
         if(getMainHandItem().isEmpty())setItemSlot(EquipmentSlot.MAINHAND,new ItemStack("town".equals(factionType)?Items.STONE_SWORD:Items.IRON_SWORD));
         setPersistenceRequired();
+    }
+    private final class SquadOrder extends Goal {
+        SquadOrder(){setFlags(EnumSet.of(Flag.MOVE));}
+        @Override public boolean canUse(){return squadOrders();}
+        @Override public boolean canContinueToUse(){return canUse();}
+        @Override public void tick(){var a=squad();if(a==null)return;
+            if(a.order.equals("retreat")){setTarget(null);}else if(getTarget()!=null&&getTarget().isAlive()){getNavigation().moveTo(getTarget(),1.12);if(tickCount%20==0&&distanceToSqr(getTarget())<4)doHurtTarget(getTarget());return;}
+            if(tickCount%20!=0)return;
+            int ox=(slot%5-2)*2,oz=(slot/5)*2;
+            if(a.formation.equals("line")){ox=(slot%10-5)*2;oz=(slot/10)*2;}
+            else if(a.formation.equals("wedge")){int row=(int)Math.sqrt(slot);ox=(slot-row*row-row)*2;oz=row*2;}
+            int x=a.rallyX+ox,z=a.rallyZ+oz;double dx=x-getX(),dz=z-getZ(),distance=Math.hypot(dx,dz);
+            if(distance<2.5){getNavigation().stop();return;}
+            double scale=Math.min(1,12/distance);BlockPos column=new BlockPos((int)Math.floor(getX()+dx*scale),0,(int)Math.floor(getZ()+dz*scale));
+            if(level() instanceof ServerLevel w&&w.hasChunkAt(column)){BlockPos target=w.getHeightmapPos(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,column);getNavigation().moveTo(target.getX()+.5,target.getY(),target.getZ()+.5,1.1);}
+        }
+        @Override public void stop(){getNavigation().stop();}
     }
     private final class FollowCaptain extends Goal {
         private ServerPlayer leader;
         FollowCaptain(){setFlags(EnumSet.of(Flag.MOVE));}
         @Override public boolean canUse(){
-            leader=following&&captain!=null&&level() instanceof ServerLevel s?s.getServer().getPlayerList().getPlayer(captain):null;
+            leader=!squadOrders()&&following&&captain!=null&&level() instanceof ServerLevel s?s.getServer().getPlayerList().getPlayer(captain):null;
             return leader!=null&&leader.level()==level()&&distanceToSqr(formationTarget(leader))>2.5*2.5;
         }
         @Override public boolean canContinueToUse(){return canUse();}
@@ -151,7 +174,7 @@ public final class SoldierEntity extends PathfinderMob {
     }
     private final class ReturnHome extends Goal {
         ReturnHome(){setFlags(EnumSet.of(Flag.MOVE));}
-        @Override public boolean canUse(){return !following&&distanceToSqr(Vec3.atCenterOf(barracks))>12*12;}
+        @Override public boolean canUse(){return !squadOrders()&&!following&&distanceToSqr(Vec3.atCenterOf(barracks))>12*12;}
         @Override public boolean canContinueToUse(){return canUse();}
         @Override public void tick(){getNavigation().moveTo(barracks.getX()+.5,barracks.getY()+1,barracks.getZ()+.5,1.05D);}
         @Override public void stop(){getNavigation().stop();}

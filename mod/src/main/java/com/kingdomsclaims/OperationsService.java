@@ -42,7 +42,7 @@ public final class OperationsService {
             ops.sites.put(s.id,s);ops.setDirty();
         }
     }
-    private static void order(MilitaryData.Army a,int x,int z){a.rallyX=x;a.rallyZ=z;a.marching=Math.hypot(a.locationX-x,a.locationZ-z)>1.5;}
+    private static void order(MilitaryData.Army a,int x,int z){a.commander=null;a.order="move";a.rallyX=x;a.rallyZ=z;a.marching=Math.hypot(a.locationX-x,a.locationZ-z)>1.5;}
     private static boolean at(MilitaryData.Army a,int x,int z){return Math.hypot(a.locationX-x,a.locationZ-z)<2.5&&!a.marching;}
     private static void release(MilitaryData.Army a){if(a!=null){order(a,a.origin.getX(),a.origin.getZ());}}
     /** Operations are initiated only while at an authorized War Table and within map view. */
@@ -78,6 +78,7 @@ public final class OperationsService {
         UUID armyId,targetId;try{armyId=UUID.fromString(args[0]);targetId=UUID.fromString(args[1]);}catch(Exception e){return "Select valid army and site.";}
         MilitaryData.Army army=mil.armies.get(armyId);
         if(army==null||!army.faction.equals(faction.id())||!army.dimension.equals(dim))return "Army does not belong to your faction.";
+        if(!d.committed(army.id)&&!army.marching&&army.fielded>0&&!ArmyFieldService.pack(p.server,army))return "Bring all surviving squad members into loaded chunks and finish combat before starting an operation.";
         OperationsData.Site s=d.sites.get(targetId);OperationsData.Caravan caravan=d.caravans.get(targetId);
         if(action.equals("raidcaravan")){
             if(caravan==null||!caravan.dim.equals(dim)||caravan.faction.equals(faction.id()))return "No enemy caravan selected.";

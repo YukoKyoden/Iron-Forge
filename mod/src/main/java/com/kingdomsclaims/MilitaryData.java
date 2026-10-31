@@ -14,7 +14,7 @@ public final class MilitaryData extends SavedData {
     public record ArmySummary(UUID id,String name,int troops,String type){}
     public static final class Army {
         public final UUID id,faction; public String name,type,dimension; public int strength,fielded,uniform=0; public String formation="column"; public int rallyX,rallyZ; public double locationX,locationZ; public boolean marching=false;
-        public BlockPos origin;
+        public BlockPos origin;public String order="legacy";public UUID commander;
         public Army(UUID id,UUID faction,String type,String name,String dimension,BlockPos origin){
             this.id=id;this.faction=faction;this.type=type;this.name=name;this.dimension=dimension;this.origin=origin;this.locationX=origin.getX();this.locationZ=origin.getZ();this.rallyX=origin.getX();this.rallyZ=origin.getZ();
         }
@@ -50,7 +50,7 @@ public final class MilitaryData extends SavedData {
     /** Server-side numerical movement, 1.5 blocks/second, never forces any Minecraft chunks. */
     public void advance(){
         boolean changed=false;
-        for(Army a:armies.values())if(a.marching){
+        for(Army a:armies.values())if(a.marching&&a.fielded==0){
             double dx=a.rallyX-a.locationX,dz=a.rallyZ-a.locationZ,dist=Math.hypot(dx,dz);
             if(dist<=1.5){a.locationX=a.rallyX;a.locationZ=a.rallyZ;a.marching=false;}
             else{a.locationX+=dx/dist*1.5;a.locationZ+=dz/dist*1.5;}
@@ -73,7 +73,7 @@ public final class MilitaryData extends SavedData {
             if(t.contains("LocationZ",Tag.TAG_DOUBLE))a.locationZ=t.getDouble("LocationZ");
             a.rallyX=t.contains("RallyX")?t.getInt("RallyX"):a.origin.getX();
             a.rallyZ=t.contains("RallyZ")?t.getInt("RallyZ"):a.origin.getZ();
-            a.marching=t.getBoolean("Marching");d.armies.put(a.id,a);
+            a.order=t.contains("Order")?t.getString("Order"):"legacy";if(t.hasUUID("Commander"))a.commander=t.getUUID("Commander");a.marching=t.getBoolean("Marching");d.armies.put(a.id,a);
         }
         return d;
     }
@@ -85,7 +85,7 @@ public final class MilitaryData extends SavedData {
         ListTag all=new ListTag();for(Army a:armies.values()){
             CompoundTag t=new CompoundTag();t.putUUID("Id",a.id);t.putUUID("Faction",a.faction);t.putString("Type",a.type);t.putString("Name",a.name);
             t.putString("Dimension",a.dimension);t.putInt("X",a.origin.getX());t.putInt("Y",a.origin.getY());t.putInt("Z",a.origin.getZ());t.putInt("Strength",a.strength);t.putInt("Fielded",a.fielded);t.putInt("Uniform",a.uniform);
-            t.putString("Formation",a.formation);t.putDouble("LocationX",a.locationX);t.putDouble("LocationZ",a.locationZ);
+            t.putString("Order",a.order);if(a.commander!=null)t.putUUID("Commander",a.commander);t.putString("Formation",a.formation);t.putDouble("LocationX",a.locationX);t.putDouble("LocationZ",a.locationZ);
             t.putInt("RallyX",a.rallyX);t.putInt("RallyZ",a.rallyZ);t.putBoolean("Marching",a.marching);all.add(t);
         }root.put("Armies",all);return root;
     }
