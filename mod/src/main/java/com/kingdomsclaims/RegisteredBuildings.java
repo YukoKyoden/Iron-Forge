@@ -73,17 +73,16 @@ public final class RegisteredBuildings extends SavedData {
     }
     public Survey preview(ServerPlayer p,BlockPos a,BlockPos c,String type){if(p.distanceToSqr(a.getX(),a.getY(),a.getZ())>128*128||p.distanceToSqr(c.getX(),c.getY(),c.getZ())>128*128)return new Survey(0,"Select a building within 128 blocks.");var f=BlueprintService.atPlayer(p);if(f==null)return new Survey(0,"BUILD permission required in your claim.");
         Building b=selection(f.id(),KingdomData.dim(p.serverLevel()),a,c,type);String issue=issue(p.serverLevel(),b);
-        if(issue!=null)return new Survey(0,issue);if(!canRegister(p,b))return new Survey(0,"BUILD permission required throughout selection.");return scan(p.serverLevel(),b,false);
+        if(issue!=null)return new Survey(0,issue);if(!canRegister(p,b))return new Survey(0,"BUILD permission required throughout selection.");return scan(p.serverLevel(),b);
     }
     public String register(ServerPlayer p,BlockPos a,BlockPos c,String type){Survey survey=preview(p,a,c,type);if(survey.capacity<=0)return survey.detail;
         var f=BlueprintService.atPlayer(p);Building b=selection(f.id(),KingdomData.dim(p.serverLevel()),a,c,type);b.capacity=survey.capacity;b.dirty=false;b.next=p.server.overworld().getGameTime()+1200;
         buildings.add(b);setDirty();return "Registered "+b.type+": "+survey.detail;
     }
-    public String register(ServerLevel w,UUID owner,BlockPos a,BlockPos c,String type){Building b=selection(owner,KingdomData.dim(w),a,c,type);String issue=issue(w,b);if(issue!=null)return issue;Survey survey=scan(w,b,false);if(survey.capacity<=0)return survey.detail;b.capacity=survey.capacity;b.dirty=false;b.next=w.getServer().overworld().getGameTime()+1200;buildings.add(b);setDirty();return "Registered "+b.type+": "+survey.detail;}
+    public String register(ServerLevel w,UUID owner,BlockPos a,BlockPos c,String type){Building b=selection(owner,KingdomData.dim(w),a,c,type);String issue=issue(w,b);if(issue!=null)return issue;Survey survey=scan(w,b);if(survey.capacity<=0)return survey.detail;b.capacity=survey.capacity;b.dirty=false;b.next=w.getServer().overworld().getGameTime()+1200;buildings.add(b);setDirty();return "Registered "+b.type+": "+survey.detail;}
     private static boolean roof(ServerLevel w,BlockPos p,Building b){for(int dy=2;dy<=Math.min(8,b.max.getY()-p.getY());dy++)if(w.getBlockState(p.above(dy)).isSolidRender(w,p.above(dy)))return true;return false;}
-    private static Survey scan(ServerLevel w,Building b,boolean harvest){
-        int beds=0,plots=0,storage=0,logs=0,leaves=0,stone=0,air=0,doors=0,stations=0,ripe=0;
-        int stockCapacity=harvest?PhysicalWarehouses.sharedCapacity(w.getServer(),b.owner):0;
+    private static Survey scan(ServerLevel w,Building b){
+        int beds=0,plots=0,storage=0,logs=0,leaves=0,stone=0,air=0,doors=0,stations=0;
         for(BlockPos p:BlockPos.betweenClosed(b.min,b.max)){
             BlockState s=w.getBlockState(p);
             if(s.getBlock() instanceof BedBlock&&s.getValue(BedBlock.PART)==BedPart.HEAD&&roof(w,p,b)&&w.getBlockState(p.above()).isAir()&&w.getBlockState(p.below()).isSolidRender(w,p.below()))beds++;
@@ -97,17 +96,12 @@ public final class RegisteredBuildings extends SavedData {
             if(s.is(Blocks.CRAFTING_TABLE)||s.is(Blocks.SMITHING_TABLE)||s.is(Blocks.FLETCHING_TABLE))stations++;
             if(s.is(Blocks.FARMLAND)&&s.getValue(FarmBlock.MOISTURE)>0&&p.getY()<b.max.getY()){
                 BlockPos crop=p.above();BlockState cs=w.getBlockState(crop);
-                if(cs.is(Blocks.WHEAT)){plots++;
-                    if(cs.getValue(CropBlock.AGE)==7){ripe++;
-                        if(harvest){int accepted=SharedStockpile.get(w.getServer()).add(b.owner,"WHEAT",1,stockCapacity);
-                            if(accepted>0){w.setBlock(crop,cs.setValue(CropBlock.AGE,0),2);ProductionData.record(w.getServer(),b.owner,"WHEAT",accepted);}}
-                    }
-                }
+                if(cs.is(Blocks.WHEAT))plots++; // Survey only; never harvest, reset or write crop states.
             }
         }
         return switch(b.type){
             case "house"->new Survey(doors>0?beds:0,beds+" sheltered beds; an entrance door is required");
-            case "farm"->new Survey(plots,plots+" hydrated wheat plots; "+ripe+" ripe (up to "+plots+" wheat/min)");
+            case "farm"->new Survey(plots,plots+" hydrated wheat plots; +"+plots+" wheat/min (passive; crops stay planted)");
             case "warehouse"->new Survey(storage,storage+" storage slots (chests, barrels, standalone shelves)");
             case "mine"->new Survey(stone>=24&&air>=12?Math.min(16,stone/24):0,"Needs 24 natural stone/ore blocks and 12 excavated underground spaces; +iron/coal each minute");
             case "lumber camp"->new Survey(logs>=8&&leaves>=8?Math.min(32,logs/8):0,"Needs 8 tree logs and 8 leaves; +wood each minute");
@@ -131,8 +125,9 @@ public final class RegisteredBuildings extends SavedData {
             if(w==null||!ownsClaims(w,b,false)){b.capacity=0;b.dirty=true;continue;}
             if(!owned(w,b))continue;
             if(!b.dirty&&now<b.next)continue;
-            boolean produce=now>=b.next;Survey survey=scan(w,b,produce&&b.type.equals("farm"));b.capacity=survey.capacity;b.dirty=false;
+            boolean produce=now>=b.next;Survey survey=scan(w,b);b.capacity=survey.capacity;b.dirty=false;
             if(produce&&b.capacity>0){int cap=PhysicalWarehouses.sharedCapacity(s,b.owner);SharedStockpile stock=SharedStockpile.get(s);
+                if(b.type.equals("farm"))ProductionData.record(s,b.owner,"WHEAT",stock.add(b.owner,"WHEAT",b.capacity,cap));
                 if(b.type.equals("mine")){ProductionData.record(s,b.owner,"IRON",stock.add(b.owner,"IRON",b.capacity,cap));ProductionData.record(s,b.owner,"COAL",stock.add(b.owner,"COAL",b.capacity,cap));ProductionData.record(s,b.owner,"STONE",stock.add(b.owner,"STONE",b.capacity*2,cap));}
                 if(b.type.equals("lumber camp"))ProductionData.record(s,b.owner,"LOGS",stock.add(b.owner,"LOGS",b.capacity,cap));
             }

@@ -40,7 +40,7 @@ public final class ProductionNetwork {
             else if(b.dirty)status="Paused: waiting for building validation";
             else if(b.capacity<=0)status="Paused: invalid building; check its requirements";
             else if(full)status="Paused: stockpile full";
-            else status=b.type.equals("farm")?"Harvests ripe wheat; growing crops must mature":"Producing automatically";
+            else status=b.type.equals("farm")?"Passive wheat output; visible crops stay planted":"Producing automatically";
             boolean running=!status.startsWith("Paused");int[] maximum=new int[8];if(b.type.equals("farm"))maximum[3]=b.capacity;if(b.type.equals("mine")){maximum[0]=b.capacity;maximum[1]=b.capacity;maximum[4]=b.capacity*2;}if(b.type.equals("lumber camp"))maximum[2]=b.capacity;
             sources.add(new Source(b.type,b.dimension+" "+b.min.toShortString(),mask,maximum,status,(int)Math.min(3600,Math.max(0,(b.next-now+19)/20)),running));
         }

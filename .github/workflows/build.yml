@@ -1,4 +1,4 @@
-name: Build Kingdoms and Claims v0.4.26.3
+name: Build Kingdoms and Claims v0.4.26.4
 on:
   push:
     branches: [kingdoms-claims-v0426-simplification]
@@ -35,11 +35,11 @@ jobs:
         run: gradle --no-daemon --stacktrace clean build ledgerRegression
       - name: Verify compiled JAR
         run: |
-          test -f mod/build/libs/kingdomsclaims-0.4.26.3.jar
-          jar tf mod/build/libs/kingdomsclaims-0.4.26.3.jar | grep -q META-INF/mods.toml
-          jar tf mod/build/libs/kingdomsclaims-0.4.26.3.jar | grep -q com/kingdomsclaims/RegisteredBuildings.class
+          test -f mod/build/libs/kingdomsclaims-0.4.26.4.jar
+          jar tf mod/build/libs/kingdomsclaims-0.4.26.4.jar | grep -q META-INF/mods.toml
+          jar tf mod/build/libs/kingdomsclaims-0.4.26.4.jar | grep -q com/kingdomsclaims/RegisteredBuildings.class
       - uses: actions/upload-artifact@v4
         with:
-          name: KingdomsClaims-v0.4.26.3-Forge-1.20.1
-          path: mod/build/libs/kingdomsclaims-0.4.26.3.jar
+          name: KingdomsClaims-v0.4.26.4-Forge-1.20.1
+          path: mod/build/libs/kingdomsclaims-0.4.26.4.jar
           if-no-files-found: error
