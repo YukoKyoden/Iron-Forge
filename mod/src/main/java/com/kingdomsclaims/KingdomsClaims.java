@@ -83,7 +83,7 @@ public final class KingdomsClaims {
         OperationsNetwork.register();
         DistrictNetwork.register();
         BlueprintNetwork.register();
-        SupplyDepotNetwork.register();BuildingNetwork.register();ManagerNetwork.register();
+        SupplyDepotNetwork.register();BuildingNetwork.register();ManagerNetwork.register();ProductionNetwork.register();
         MinecraftForge.EVENT_BUS.register(ClaimEvents.class);MinecraftForge.EVENT_BUS.register(RegisteredBuildings.class);
         MinecraftForge.EVENT_BUS.register(PhysicalWarehouses.class);
         MinecraftForge.EVENT_BUS.register(PlayerBuildEvents.class);

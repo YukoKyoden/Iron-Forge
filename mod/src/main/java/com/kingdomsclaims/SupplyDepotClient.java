@@ -16,7 +16,8 @@ public final class SupplyDepotClient {
             addRenderableWidget(Button.builder(Component.literal("Deposit stack"),b->send("deposit")).bounds(x+12,y+145,105,21).build());
             addRenderableWidget(Button.builder(Component.literal("Withdraw stack"),b->send("withdraw")).bounds(x+125,y+145,105,21).build());
             addRenderableWidget(Button.builder(Component.literal("Deposit all"),b->send("all")).bounds(x+238,y+145,105,21).build());
-            addRenderableWidget(Button.builder(Component.literal("Close"),b->onClose()).bounds(x+125,y+177,105,20).build());
+            addRenderableWidget(Button.builder(Component.literal("Production"),b->ProductionNetwork.request()).bounds(x+12,y+177,105,20).build());
+            addRenderableWidget(Button.builder(Component.literal("Close"),b->onClose()).bounds(x+238,y+177,105,20).build());
         }
         @Override public boolean mouseClicked(double mx,double my,int button){int x=width/2-178,y=height/2-105;for(int i=page*8;i<Math.min(page*8+8,data.keys().length);i++){int xx=x+12+(i%8)*42,yy=y+47;if(mx>=xx&&mx<xx+40&&my>=yy&&my<yy+40){selected=i;if(button==1)send("withdraw");else if(hasShiftDown())send("deposit");return true;}}return super.mouseClicked(mx,my,button);}
         @Override public void tick(){if(++ticks%100==0)send("refresh");}

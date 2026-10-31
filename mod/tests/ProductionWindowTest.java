@@ -1,0 +1,5 @@
+import com.kingdomsclaims.ProductionWindow;
+public final class ProductionWindowTest {
+ static void check(boolean x,String m){if(!x)throw new AssertionError(m);}
+ public static void main(String[] args){var w=new ProductionWindow();w.add(0,2,4);w.add(0,2,3);w.add(0,3,1);check(w.total(59,2)==7,"same second sums real deliveries");check(w.total(60,2)==0,"sixty-second expiry exact");check(w.total(59,3)==1,"resource types independent");w.add(60,2,2);check(w.total(60,2)==2,"old output excluded after new delivery");w.add(61,2,-1);check(w.total(61,2)==2,"negative amount rejected");var restored=new ProductionWindow();for(var s:w.samples())restored.add(s.second(),s.good(),s.amount());check(restored.total(61,2)==2,"history replay preserves window");w.add(62,2,Integer.MAX_VALUE);check(w.total(62,2)==Integer.MAX_VALUE,"sum saturates safely");check(w.total(61,2)==2,"future samples not counted");for(int i=100;i<10000;i++)w.add(i,0,1);check(w.samples().size()<=60,"history bounded");System.out.println("Actual production rolling-window regressions passed.");}
+}

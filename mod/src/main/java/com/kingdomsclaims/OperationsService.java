@@ -180,7 +180,7 @@ public final class OperationsService {
                     var w=server.getLevel(net.minecraft.resources.ResourceKey.create(
                         net.minecraft.core.registries.Registries.DIMENSION,new net.minecraft.resources.ResourceLocation(s.dim)));
                     if(w!=null){int arrived=PhysicalWarehouses.deliver(w,s.owner,new BlockPos(s.x,w.getSeaLevel(),s.z),s.good(),s.stock);
-                        if(arrived>0){s.stock-=arrived;d.setDirty();}
+                        if(arrived>0){ProductionData.record(server,s.owner,s.good(),arrived);s.stock-=arrived;d.setDirty();}
                     }
                 }
             }

@@ -309,7 +309,8 @@ public final class KingdomOverviewClient {
                 "Open your kingdom stockpile and finances without leaving the 3D view",()->setPane(pane==Pane.ECONOMY?Pane.NONE:Pane.ECONOMY));
             btn((pane==Pane.CLAIMS?"• ":"")+"Claims",sideX,sideY+step*2,sideW,bh,pane==Pane.CLAIMS?0xFF79CBA7:HUD_BORDER,
                 "Click a terrain chunk in 3D to preview a kingdom or town claim",()->setPane(pane==Pane.CLAIMS?Pane.NONE:Pane.CLAIMS));
-            btn("Exit planner",sideX,sideY+step*3,sideW,bh,0xFFA6ADA9,
+            btn("Production",sideX,sideY+step*3,sideW,bh,HUD_BORDER,"See actual deliveries, rates and paused buildings",()->{onClose();ProductionNetwork.request();});
+            btn("Exit planner",sideX,sideY+step*4,sideW,bh,0xFFA6ADA9,
                 "Return to your character",this::onClose);
             if(pane==Pane.NONE){zoneName=null;return;}
             int px=panelX(), pw=panelWidth(), inner=px+12, w=pw-24;
@@ -882,7 +883,7 @@ public final class KingdomOverviewClient {
                 g.drawString(font,"Middle drag tilt",rightX+7,71,HUD_TEXT,false);
             }
             int sw=sidebarWidth();
-            MinecraftMenu.panel(g,7,55,18+sw,200);
+            MinecraftMenu.panel(g,7,55,18+sw,230);
             g.fill(7,55,18+sw,57,HUD_GOLD);
             g.drawString(font,"KINGDOM TOOLS",15,59,HUD_GOLD,false);
             if(pane!=Pane.NONE){
@@ -942,18 +943,6 @@ public final class KingdomOverviewClient {
                 g.drawString(font,"CHUNK "+cx+", "+cz,infoX+8,infoY+7,HUD_GOLD,false);
                 g.drawString(font,own?"Owned • click to select":"Unclaimed • cannot zone",infoX+8,infoY+22,
                     own?0xFF246B26:0xFFA01919,false);
-            }
-            if(showClaims&&data.markers()!=null&&!data.markers().isEmpty()){
-                int bx=10+sidebarWidth()+15;
-                int by=Math.max(104,height-100);
-                int shown=0;
-                for(DistrictNetwork.Marker m:data.markers()){
-                    if(shown>=4)break;
-                    if(Math.abs(m.x()-x)>160||Math.abs(m.z()-z)>160)continue;
-                    MinecraftMenu.panel(g,bx,by+shown*13,bx+155,by+shown*13+12);
-                    g.drawString(font,(m.kind().equals("WAREHOUSE")?"[W] Warehouse":"[+] "+m.kind())+"  "+(m.x()>>4)+","+(m.z()>>4),bx+3,by+2+shown*13,0xFF404040,false);
-                    shown++;
-                }
             }
             if(!alert.isBlank()){
                 int ay=height-24,base=10+sidebarWidth()+15;

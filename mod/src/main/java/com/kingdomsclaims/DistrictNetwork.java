@@ -217,14 +217,6 @@ public final class DistrictNetwork {
         }
         // No world scanning or chunk forcing: use SavedData indexes only.
         List<Marker> markers=new ArrayList<>();
-        var warehouses=WarehouseData.get(p.serverLevel());
-        for(var entry:warehouses.depots.entrySet()){
-            if(markers.size()>=48)break;
-            if(!entry.getValue().faction.equals(faction.id()))continue;
-            BlockPos warehousePos=BlockPos.of(entry.getKey());
-            if(Math.abs(warehousePos.getX()-(cx<<4))>256||Math.abs(warehousePos.getZ()-(cz<<4))>256)continue;
-            markers.add(new Marker("WAREHOUSE",warehousePos.getX(),warehousePos.getY(),warehousePos.getZ()));
-        }
         for(var site:OperationsData.get(p.getServer()).sites.values()){
             if(markers.size()>=64)break;
             if(site.owner==null||!site.owner.equals(faction.id())||!site.dim.equals(dim))continue;

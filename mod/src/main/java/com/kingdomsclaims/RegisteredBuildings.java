@@ -100,7 +100,7 @@ public final class RegisteredBuildings extends SavedData {
                 if(cs.is(Blocks.WHEAT)){plots++;
                     if(cs.getValue(CropBlock.AGE)==7){ripe++;
                         if(harvest){int accepted=SharedStockpile.get(w.getServer()).add(b.owner,"WHEAT",1,stockCapacity);
-                            if(accepted>0)w.setBlock(crop,cs.setValue(CropBlock.AGE,0),2);}
+                            if(accepted>0){w.setBlock(crop,cs.setValue(CropBlock.AGE,0),2);ProductionData.record(w.getServer(),b.owner,"WHEAT",accepted);}}
                     }
                 }
             }
@@ -120,7 +120,8 @@ public final class RegisteredBuildings extends SavedData {
     public int housing(MinecraftServer s,UUID owner){return sum(s,owner,"house");}
     public int warehouseCapacity(MinecraftServer s,UUID owner){return sum(s,owner,"warehouse");}
     public int barracksCapacity(MinecraftServer s,UUID owner){return sum(s,owner,"barracks");}
-    public int[] rates(MinecraftServer s,UUID owner){int[] rates=new int[OperationsData.GOODS.length];rates[0]=sum(s,owner,"mine");rates[1]=rates[0];rates[2]=sum(s,owner,"lumber camp");rates[3]=sum(s,owner,"farm");rates[4]=rates[0]*2;return rates;}
+    private int loadedProduction(MinecraftServer s,UUID owner,String type){UUID id=SharedStockpile.owner(s,owner);long n=0;for(Building b:buildings){if(!id.equals(SharedStockpile.owner(s,b.owner))||!b.type.equals(type)||!active(s,b))continue;var w=world(s,b.dimension);if(w!=null&&owned(w,b))n+=b.capacity;}return (int)Math.min(1_000_000,n);}
+    public int[] rates(MinecraftServer s,UUID owner){int[] rates=new int[OperationsData.GOODS.length];rates[0]=loadedProduction(s,owner,"mine");rates[1]=rates[0];rates[2]=loadedProduction(s,owner,"lumber camp");rates[3]=loadedProduction(s,owner,"farm");rates[4]=rates[0]*2;return rates;}
     public List<Building> of(MinecraftServer s,UUID owner){UUID id=SharedStockpile.owner(s,owner);return buildings.stream().filter(b->id.equals(SharedStockpile.owner(s,b.owner))).toList();}
     public boolean remove(ServerPlayer p,String id){Building b=buildings.stream().filter(x->x.id.toString().equals(id)).findFirst().orElse(null);if(b==null||!b.dimension.equals(KingdomData.dim(p.serverLevel()))||!canRegister(p,b))return false;buildings.remove(b);setDirty();return true;}
     public void tick(MinecraftServer s){
@@ -132,8 +133,8 @@ public final class RegisteredBuildings extends SavedData {
             if(!b.dirty&&now<b.next)continue;
             boolean produce=now>=b.next;Survey survey=scan(w,b,produce&&b.type.equals("farm"));b.capacity=survey.capacity;b.dirty=false;
             if(produce&&b.capacity>0){int cap=PhysicalWarehouses.sharedCapacity(s,b.owner);SharedStockpile stock=SharedStockpile.get(s);
-                if(b.type.equals("mine")){stock.add(b.owner,"IRON",b.capacity,cap);stock.add(b.owner,"COAL",b.capacity,cap);stock.add(b.owner,"STONE",b.capacity*2,cap);}
-                if(b.type.equals("lumber camp"))stock.add(b.owner,"LOGS",b.capacity,cap);
+                if(b.type.equals("mine")){ProductionData.record(s,b.owner,"IRON",stock.add(b.owner,"IRON",b.capacity,cap));ProductionData.record(s,b.owner,"COAL",stock.add(b.owner,"COAL",b.capacity,cap));ProductionData.record(s,b.owner,"STONE",stock.add(b.owner,"STONE",b.capacity*2,cap));}
+                if(b.type.equals("lumber camp"))ProductionData.record(s,b.owner,"LOGS",stock.add(b.owner,"LOGS",b.capacity,cap));
             }
             if(produce)b.next=now+1200;setDirty();break;
         }

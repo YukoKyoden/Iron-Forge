@@ -49,7 +49,7 @@ public final class DistrictData extends SavedData {
         setDirty();
         if(essentialsPaid&&c.pendingTaxNuggets>0){
             int accepted=SharedStockpile.get(server).add(owner,"GOLD_NUGGETS",(int)Math.min(Integer.MAX_VALUE,c.pendingTaxNuggets),PhysicalWarehouses.sharedCapacity(server,owner));
-            if(accepted>0){c.pendingTaxNuggets-=accepted;setDirty();}
+            if(accepted>0){ProductionData.record(server,owner,"GOLD_NUGGETS",accepted);c.pendingTaxNuggets-=accepted;setDirty();}
         }
         return essentialsPaid;
     }

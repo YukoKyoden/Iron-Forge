@@ -23,6 +23,7 @@ public final class LedgerPersistenceTest {
         check(actual.owner.equals(kingdom)&&actual.min.equals(b.min)&&actual.max.equals(b.max)&&actual.capacity==4&&!actual.dirty&&actual.next==12000,"registration bounds, capacity and production clock survive NBT roundtrip");
         EconomyService.Ledger clock=new EconomyService.Ledger();clock.funded.put(kingdom,true);clock.nextPaymentSeconds.put(kingdom,123);clock.successfulPayments.put(kingdom,7);
         var savedClock=EconomyService.Ledger.load(clock.save(new CompoundTag()));check(savedClock.nextPaymentSeconds.get(kingdom)==123&&savedClock.successfulPayments.get(kingdom)==7,"upkeep timer and payment count survive NBT roundtrip");
+        ProductionData production=new ProductionData();ProductionWindow window=new ProductionWindow();window.add(100,2,7);production.windows.put(kingdom,window);var history=ProductionData.load(production.save(new CompoundTag()));check(history.windows.get(kingdom).total(159,2)==7&&history.windows.get(kingdom).total(160,2)==0,"production history persists and expires exactly");
         System.out.println("Actual stockpile, registered-building and upkeep NBT persistence regressions passed.");
     }
 }
