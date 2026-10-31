@@ -24,7 +24,7 @@ public final class ResourceMarkers {
         if(!KingdomService.authorized(player,w,p,KingdomData.BUILD))return;var b=register(w,p,player,type);if(b==null)return;
         long seconds=Math.max(0,(b.next-w.getServer().overworld().getGameTime()+19)/20);
         boolean mine=type.equals("mine");String label=mine?"Mine":"Woodcutter";
-        player.sendSystemMessage(Component.literal("["+label+"] "+(b.capacity>0?ProductionText.rate(mine?b.capacity:b.capacity*2,360)+(mine?" iron":" wood"):"PAUSED - "+b.surveyDetail)));
+        player.sendSystemMessage(Component.literal("["+label+"] "+(b.capacity>0?"+"+ProductionText.quantity(mine?b.capacity:b.capacity*2)+(mine?" iron":" wood")+" every 6 minutes":"PAUSED - "+b.surveyDetail)));
         player.sendSystemMessage(Component.literal(mine?"Connected rails: "+b.connectedRails+" | Productive sections: "+b.capacity:"Found: "+b.detectedLogs+" logs, "+b.detectedLeaves+" leaves | Area: 15x15, 35 up"));
         player.sendSystemMessage(Component.literal("Next cycle in "+ProductionText.time((int)Math.min(Integer.MAX_VALUE,seconds))+". Right-click shows the latest scan."));
     }
