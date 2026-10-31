@@ -61,7 +61,7 @@ public final class WorldArchitectClient {
         for(long key:preview.ownedChunks())allowed.add(key);
         ownedChunks=java.util.Set.copyOf(allowed);
         BlueprintData.Plan costPlan=new BlueprintData.Plan(preview.id(),new java.util.UUID(0,0),"",preview.name(),preview.width(),preview.height(),preview.depth());
-        costPlan.blocks.addAll(preview.pieces());materialCosts=new java.util.ArrayList<>(BlueprintService.requirements(costPlan).entrySet());
+        costPlan.folder=preview.houseCost()?"Houses":"Other";costPlan.blocks.addAll(preview.pieces());materialCosts=new java.util.ArrayList<>(BlueprintService.requirements(costPlan).entrySet());
         cached=List.copyOf(pieces);active=preview;turns=0;verticalOffset=0;anchor=null;waiting=false;cooldownTicks=0;lastPlacedAnchor=null;repeatPlacement=true;
         notice="Aim up to 96 blocks away to position the house";
         if(mc.screen!=null)mc.setScreen(null);
@@ -226,14 +226,14 @@ public final class WorldArchitectClient {
         int visible=Math.min(materialCosts.size(),Math.max(1,(w-24)/42)),start=cx-visible*21;
         for(int i=0;i<visible;i++){var e=materialCosts.get(i);int xx=start+i*42,yy=bottom-82;
             MinecraftMenu.inset(g,xx,yy,xx+40,yy+40);g.renderItem(new net.minecraft.world.item.ItemStack(e.getKey()),xx+12,yy+3);
-            g.drawCenteredString(mc.font,ResourceSlots.compact(e.getValue()),xx+20,yy+24,0xFF404040);
+            g.drawCenteredString(mc.font,ResourceSlots.compact(e.getValue()),xx+20,yy+24,0xFFFFFFFF);
         }
         MinecraftMenu.panel(g,cx-180,bottom-45,cx+180,bottom+35);
-        g.drawCenteredString(mc.font,"ARCHITECT  /  "+mc.font.plainSubstrByWidth(active.name(),200),cx,bottom-21,0xFF404040);
-        g.drawCenteredString(mc.font,"R rotate  •  Shift+wheel height  •  M multi-place  •  Esc exit",cx,bottom-7,0xFF404040);
+        g.drawCenteredString(mc.font,"ARCHITECT  /  "+mc.font.plainSubstrByWidth(active.name(),200),cx,bottom-21,0xFFFFFFFF);
+        g.drawCenteredString(mc.font,"R rotate  •  Shift+wheel height  •  M multi-place  •  Esc exit",cx,bottom-7,0xFFFFFFFF);
         String status=waiting?"Checking...":anchor==null?"Aim at a solid block":(emptyPreviewSpace()?"PREVIEW CLEAR — server checks claims and materials":"BLOCKED — claim the land or clear existing blocks");
-        g.drawCenteredString(mc.font,status,cx,bottom+7,anchor!=null&&emptyPreviewSpace()?0xFF246B26:0xFFA01919);
-        g.drawCenteredString(mc.font,repeatPlacement?"MULTI-PLACE ON — click repeatedly to build copies":"ONE BUILD — press M for multiple copies",cx,bottom-35,repeatPlacement?0xFF246B26:0xFF404040);
-        if(!notice.isBlank())g.drawCenteredString(mc.font,mc.font.plainSubstrByWidth(notice,350),cx,bottom+20,0xFF404040);
+        g.drawCenteredString(mc.font,status,cx,bottom+7,anchor!=null&&emptyPreviewSpace()?0xFF8DEA9A:0xFFFF7777);
+        g.drawCenteredString(mc.font,repeatPlacement?"MULTI-PLACE ON — click repeatedly to build copies":"ONE BUILD — press M for multiple copies",cx,bottom-35,repeatPlacement?0xFF8DEA9A:0xFFFFFFFF);
+        if(!notice.isBlank())g.drawCenteredString(mc.font,mc.font.plainSubstrByWidth(notice,350),cx,bottom+20,0xFFFFFFFF);
     }
 }

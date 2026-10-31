@@ -152,10 +152,10 @@ public final class WorldSelectionClient {
         Minecraft mc=Minecraft.getInstance();if(mc.player==null||mc.screen!=null)return;
         GuiGraphics g=event.getGuiGraphics();int cx=mc.getWindow().getGuiScaledWidth()/2,y=mc.getWindow().getGuiScaledHeight()-94;
         MinecraftMenu.panel(g,cx-175,y-12,cx+175,y+43);
-        g.drawCenteredString(mc.font,(registering?"REGISTER BUILDING  /  ":"BLUEPRINT SELECTION  /  ")+(first==null?"FIRST CORNER":"SECOND CORNER"),cx,y-6,0xFF404040);
-        g.drawCenteredString(mc.font,first==null?"Look at first block • Left click to start":metrics(),cx,y+7,first==null||withinLimit()?0xFF246B26:0xFFA01919);
-        g.drawCenteredString(mc.font,"Left click confirm  •  Shift+wheel height  •  R restart  •  Esc cancel",cx,y+20,0xFF404040);
-        g.drawCenteredString(mc.font,mc.font.plainSubstrByWidth(status,340),cx,y+32,0xFF404040);
+        g.drawCenteredString(mc.font,(registering?"REGISTER BUILDING  /  ":"BLUEPRINT SELECTION  /  ")+(first==null?"FIRST CORNER":"SECOND CORNER"),cx,y-6,0xFFFFFFFF);
+        g.drawCenteredString(mc.font,first==null?"Look at first block • Left click to start":metrics(),cx,y+7,first==null||withinLimit()?0xFF8DEA9A:0xFFFF7777);
+        g.drawCenteredString(mc.font,"Left click confirm  •  Shift+wheel height  •  R restart  •  Esc cancel",cx,y+20,0xFFFFFFFF);
+        g.drawCenteredString(mc.font,mc.font.plainSubstrByWidth(status,340),cx,y+32,0xFFFFFFFF);
     }
     private static final class SaveScreen extends Screen {
         private EditBox name;
@@ -181,9 +181,9 @@ public final class WorldSelectionClient {
             renderBackground(g);
             int cx=width/2,cy=height/2;
             MinecraftMenu.panel(g,cx-170,cy-65,cx+170,cy+105);
-            g.drawCenteredString(font,"SAVE HOUSE BLUEPRINT",cx,cy-52,0xFF404040);
-            g.drawCenteredString(font,metrics(),cx,cy-37,0xFF246B26);
-            if(status.startsWith("Save failed"))g.drawCenteredString(font,font.plainSubstrByWidth(status,330),cx,cy+71,0xFFA01919);
+            g.drawCenteredString(font,"SAVE HOUSE BLUEPRINT",cx,cy-52,0xFFFFFFFF);
+            g.drawCenteredString(font,metrics(),cx,cy-37,0xFF8DEA9A);
+            if(status.startsWith("Save failed"))g.drawCenteredString(font,font.plainSubstrByWidth(status,330),cx,cy+71,0xFFFF7777);
             super.render(g,mouseX,mouseY,partial);
         }
     }

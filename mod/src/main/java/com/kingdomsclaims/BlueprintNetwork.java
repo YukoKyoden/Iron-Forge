@@ -16,7 +16,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 /** Server-authorized blueprint preview: only block states and coordinates cross the wire, never inventories. */
 public final class BlueprintNetwork {
     private BlueprintNetwork(){}
-    private static final String VERSION="5";
+    private static final String VERSION="6";
     public static final SimpleChannel CHANNEL=NetworkRegistry.newSimpleChannel(new ResourceLocation(KingdomsClaims.MODID,"architect"),()->VERSION,VERSION::equals,VERSION::equals);
     public record Summary(UUID id,String name,int width,int height,int depth,int blocks,int seconds,int housing,int floor,int beds,String folder){}
     public record Request(BlockPos manager){
@@ -83,14 +83,14 @@ public final class BlueprintNetwork {
             int cx=originX+dx,cz=originZ+dz;
             if(identity.equals(land.identity(dimension,cx,cz)))owned.add(net.minecraft.world.level.ChunkPos.asLong(cx,cz));
         }
-        CHANNEL.send(PacketDistributor.PLAYER.with(()->player),new Preview(plan.id,plan.name,plan.width,plan.height,plan.depth,blocks,owned.stream().mapToLong(Long::longValue).toArray()));
+        CHANNEL.send(PacketDistributor.PLAYER.with(()->player),new Preview(plan.id,plan.name,plan.width,plan.height,plan.depth,blocks,owned.stream().mapToLong(Long::longValue).toArray(),BlueprintService.houseCost(plan)));
     }
     /** Bounded 4096 block positions + serialized BlockStates. Client does not control these. */
-    public record Preview(UUID id,String name,int width,int height,int depth,List<BlueprintData.Piece> pieces,long[] ownedChunks){
+    public record Preview(UUID id,String name,int width,int height,int depth,List<BlueprintData.Piece> pieces,long[] ownedChunks,boolean houseCost){
         static void write(Preview a,FriendlyByteBuf b){
             b.writeUUID(a.id);b.writeUtf(a.name,28);b.writeVarInt(a.width);b.writeVarInt(a.height);b.writeVarInt(a.depth);
             b.writeVarInt(a.pieces.size());for(var piece:a.pieces){b.writeByte(piece.x);b.writeByte(piece.y);b.writeByte(piece.z);b.writeNbt(piece.state);}
-            b.writeVarInt(a.ownedChunks.length);for(long key:a.ownedChunks)b.writeLong(key);
+            b.writeVarInt(a.ownedChunks.length);for(long key:a.ownedChunks)b.writeLong(key);b.writeBoolean(a.houseCost);
         }
         static Preview read(FriendlyByteBuf b){
             UUID id=b.readUUID();String name=b.readUtf(28);int w=b.readVarInt(),h=b.readVarInt(),d=b.readVarInt(),count=b.readVarInt();
@@ -102,7 +102,7 @@ public final class BlueprintNetwork {
             }
             int ownedCount=b.readVarInt();if(ownedCount<0||ownedCount>361)throw new IllegalArgumentException("Invalid claim preview size");
             long[] chunks=new long[ownedCount];for(int i=0;i<ownedCount;i++)chunks[i]=b.readLong();
-            return new Preview(id,name,w,h,d,pieces,chunks);
+            return new Preview(id,name,w,h,d,pieces,chunks,b.readBoolean());
         }
         static void handle(Preview a,Supplier<NetworkEvent.Context> supplier){var ctx=supplier.get();ctx.enqueueWork(()->DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->WorldArchitectClient.activate(a)));ctx.setPacketHandled(true);}
     }

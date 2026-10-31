@@ -19,7 +19,7 @@ public final class BuildingClient {
             addRenderableWidget(Button.builder(Component.literal("Confirm registration"),v->{if(valid)send(true);}).bounds(x+152,y+137,148,22).build());
             addRenderableWidget(Button.builder(Component.literal("Cancel"),v->onClose()).bounds(x+90,y+169,120,20).build());
         }
-        @Override public void render(GuiGraphics g,int mx,int my,float pt){renderBackground(g);int x=width/2-150,y=height/2-100;MinecraftMenu.panel(g,x-10,y-39,x+310,y+200);g.drawCenteredString(font,"REGISTER "+RegisteredBuildings.TYPES[type].toUpperCase(),width/2,y-28,0xFF404040);super.render(g,mx,my,pt);
+        @Override public void render(GuiGraphics g,int mx,int my,float pt){renderBackground(g);int x=width/2-150,y=height/2-100;MinecraftMenu.panel(g,x-10,y-39,x+310,y+200);g.drawCenteredString(font,"REGISTER "+RegisteredBuildings.TYPES[type].toUpperCase(),width/2,y-28,0xFFFFFFFF);super.render(g,mx,my,pt);
             for(int i=0;i<6;i++)g.renderItem(new ItemStack(ICONS[i]),x+4+(i%2)*152,y+4+(i/2)*30);
             var lines=font.split(Component.literal(message),300);for(int i=0;i<Math.min(4,lines.size());i++)g.drawString(font,lines.get(i),x,y+96+i*10,valid?0xFF246B26:0xFF404040,false);
         }

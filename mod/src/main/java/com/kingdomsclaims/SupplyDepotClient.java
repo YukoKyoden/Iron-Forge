@@ -22,7 +22,7 @@ public final class SupplyDepotClient {
         @Override public void tick(){if(++ticks%100==0)send("refresh");}
         @Override public void render(GuiGraphics g,int mx,int my,float pt){renderBackground(g);selected=Math.min(selected,data.keys().length-1);page=Math.min(page,(data.keys().length-1)/8);int x=width/2-178,y=height/2-105;MinecraftMenu.panel(g,x,y,x+356,y+210);g.drawString(font,"KINGDOM SHARED STOCKPILE",x+12,y+12,0xFF404040,false);g.drawString(font,"Storage "+data.used()+" / "+data.capacity(),x+12,y+29,0xFF404040,false);
             for(int i=page*8;i<Math.min(page*8+8,data.keys().length);i++){int xx=x+12+(i%8)*42;if(i==selected)g.fill(xx-1,y+45,xx+41,y+89,0xFFFFFFFF);ResourceSlots.slot(g,xx,y+47,data.keys()[i],data.stored()[i],data.rates()[i],0,mx,my);}
-            g.drawString(font,font.plainSubstrByWidth(data.keys()[Math.min(selected,data.keys().length-1)]+"  /  carried: "+data.carried()[selected],330),x+12,y+100,0xFF404040,false);g.drawString(font,"Shift-click: deposit  |  Right-click: withdraw",x+12,y+117,0xFF404040,false);g.drawString(font,font.plainSubstrByWidth(data.message(),330),x+12,y+134,0xFF404040,false);super.render(g,mx,my,pt);
+            g.drawString(font,font.plainSubstrByWidth(EconomyService.goodsItem(data.keys()[Math.min(selected,data.keys().length-1)]).getDescription().getString()+"  /  carried: "+data.carried()[selected],330),x+12,y+100,0xFF404040,false);g.drawString(font,"Shift-click: deposit  |  Right-click: withdraw",x+12,y+117,0xFF404040,false);g.drawString(font,font.plainSubstrByWidth(data.message(),330),x+12,y+134,0xFF404040,false);super.render(g,mx,my,pt);
         }
         @Override public boolean isPauseScreen(){return false;}
     }

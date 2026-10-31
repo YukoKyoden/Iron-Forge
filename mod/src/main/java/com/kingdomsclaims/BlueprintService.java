@@ -132,7 +132,16 @@ public final class BlueprintService {
         }
         return null;
     }
+    public static boolean houseCost(BlueprintData.Plan plan){
+        String name=plan.name.toLowerCase(java.util.Locale.ROOT);
+        return plan.folder.equalsIgnoreCase("Houses")||plan.housingSlots()>0||name.contains("house")||name.contains("cottage")||name.contains("apartment")||name.contains("home");
+    }
     public static Map<Item,Integer> requirements(BlueprintData.Plan plan){
+        if(houseCost(plan)){
+            HouseBuildCost.Cost c=HouseBuildCost.forBlocks(plan.blocks.size());
+            Map<Item,Integer> house=new LinkedHashMap<>();house.put(Items.OAK_LOG,c.wood());house.put(Items.IRON_INGOT,c.iron());house.put(Items.GOLD_INGOT,c.gold());return house;
+        }
+
         Map<Item,Integer> cost=new LinkedHashMap<>();
         for(BlueprintData.Piece piece:plan.blocks){
             BlockState state=NbtUtils.readBlockState(BuiltInRegistries.BLOCK.asLookup(),piece.state);

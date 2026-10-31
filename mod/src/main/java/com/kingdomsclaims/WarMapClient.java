@@ -272,7 +272,7 @@ public final class WarMapClient {
                 }
                 boolean active=a.id().equals(selected);int c=active?0xFFF4D56E:0xFF9DCEDB;
                 g.fill(x-5,y-5,x+6,y+6,0xFF121B1D);g.fill(x-3,y-3,x+4,y+4,c);
-                if(insideMap(x,y))g.drawString(font,clip(a.name()+" ["+(a.strength()+a.fielded())+"]",100),x+9,y-5,0xFFF2F3EB,true);
+                if(insideMap(x,y))g.drawString(font,clip(a.name()+" ["+(a.strength()+a.fielded())+"]",100),x+9,y-5,0xFFFFFFFF,true);
             }
             if(operations!=null){
                 for(var site:operations.sites()){
@@ -289,7 +289,7 @@ public final class WarMapClient {
                     if(site.stage().equals("OUTPOST")){g.fill(px-1,py-8,px+2,py-4,0xFFFFFFFF);}
                     if(site.alert())g.fill(px+4,py-8,px+7,py-5,0xFFFF3434);
                     if(site.id().equals(selectedSite())){g.fill(px-9,py-9,px+10,py-8,0xFFFFFF89);g.fill(px-9,py+8,px+10,py+9,0xFFFFFF89);}
-                    if(zoom>=10)g.drawString(font,clip(site.type()+" "+site.progress()+"%",75),px+9,py-5,0xFFF9E6BB,true);
+                    if(zoom>=10)g.drawString(font,clip(site.type()+" "+site.progress()+"%",75),px+9,py-5,0xFFFFFFFF,true);
                 }
                 for(var caravan:operations.caravans()){
                     int px=(int)screenX(caravan.x()),py=(int)screenY(caravan.z());if(!insideMap(px,py))continue;
@@ -374,7 +374,7 @@ public final class WarMapClient {
                 g.drawString(font,"X: "+x+"  Z: "+z,mapLeft()+7,mapTop()+6,0xFFFFFFFF,true);
             }
             String message=!data.message().isBlank()?data.message():localMessage;
-            if(!message.isBlank())g.drawCenteredString(font,clip(message,Math.max(80,mapRight()-20)),(mapLeft()+mapRight())/2,height-9,0xFF404040);
+            if(!message.isBlank())g.drawCenteredString(font,clip(message,Math.max(80,mapRight()-20)),(mapLeft()+mapRight())/2,height-9,0xFFFFFFFF);
             super.render(g,mx,my,partial);
             // Bright white selection outlines, independent of Minecraft button hover state.
             int sx=sideX()+7,sw=width-sx-8,third=(sw-10)/3;

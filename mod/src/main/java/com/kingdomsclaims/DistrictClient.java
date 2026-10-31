@@ -159,7 +159,7 @@ public final class DistrictClient {
                 g.drawString(font,"Chunk "+cx+", "+cz,left()+6,top()+6,0xFFFFFFFF,true);
             }
             String msg=lastMessage.isEmpty()?data.message():lastMessage;
-            if(!msg.isBlank())g.drawCenteredString(font,clip(msg,Math.max(100,right()-14)),(left()+right())/2,height-7,0xFF404040);
+            if(!msg.isBlank())g.drawCenteredString(font,clip(msg,Math.max(100,right()-14)),(left()+right())/2,height-7,0xFFFFFFFF);
             super.render(g,mx,my,partial);
             int sx=sideX()+8,sw=width-sx-10,half=(sw-6)/2;
             outline(g,economy?sx+half+6:sx,48,economy?sw-half-6:half,20,0xFFFFFFFF);

@@ -5,7 +5,7 @@ plugins {
     id 'net.minecraftforge.gradle' version '[6.0,6.2)'
 }
 
-version = '0.4.26.1'
+version = '0.4.26.2'
 group = 'com.kingdomsclaims'
 base { archivesName = 'kingdomsclaims' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
