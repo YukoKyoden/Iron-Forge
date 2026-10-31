@@ -51,7 +51,7 @@ public final class OperationsNetwork {
             if(p.action.equals("sendcaravan")){
                 try{String[] a=p.payload.split("\\|",-1);result=OperationsService.sendCaravan(sender,p.table,UUID.fromString(a[0]),Integer.parseInt(a[1]),Integer.parseInt(a[2]),a[3],Integer.parseInt(a[4]));}catch(Exception e){result="Select an army, cargo and a claimed destination.";}
             }else result=OperationsService.execute(sender,p.table,p.action,p.payload);
-            WarMapNetwork.send(sender,p.table,p.cx,p.cz,result);
+            WarMapNetwork.send(sender,p.table,p.cx,p.cz,result,false);
         });ctx.setPacketHandled(true);}
     }
     public static void send(ServerPlayer p,BlockPos table,int cx,int cz){

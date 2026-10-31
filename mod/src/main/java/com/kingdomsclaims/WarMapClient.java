@@ -20,7 +20,7 @@ public final class WarMapClient {
     public static void accept(WarMapNetwork.Snapshot snapshot){
         var mc=Minecraft.getInstance();
         if(mc.screen instanceof TacticalScreen open&&open.data.table().equals(snapshot.table())){open.apply(snapshot);return;}
-        mc.setScreen(new TacticalScreen(snapshot));
+        if(snapshot.open())mc.setScreen(new TacticalScreen(snapshot));
     }
     private static final class TacticalScreen extends Screen {
         private WarMapNetwork.Snapshot data;
@@ -54,7 +54,7 @@ public final class WarMapClient {
             String name=armyName==null?nameDraft:armyName.getValue();
             var previous=data;data=snap;
             if(snap.message().startsWith("Created "))for(var candidate:snap.armies())if(previous.armies().stream().noneMatch(old->old.id().equals(candidate.id())))selected=candidate.id();
-            if(selected==null||snap.armies().stream().noneMatch(a->a.id().equals(selected)))selected=snap.armies().isEmpty()?null:snap.armies().get(0).id();
+            if(selected!=null&&snap.armies().stream().noneMatch(a->a.id().equals(selected)))selected=null;
             clearWidgets();init();if(armyName!=null)armyName.setValue(name);
         }
         // The roster, selected-army summary and orders each own a non-overlapping area.
@@ -83,7 +83,7 @@ public final class WarMapClient {
         private boolean insideMap(double x,double y){return x>=mapLeft()&&x<mapRight()&&y>=mapTop()&&y<mapBottom();}
         private int centerChunkX(){return (int)Math.round(viewX);}
         private int centerChunkZ(){return (int)Math.round(viewZ);}
-        private void refresh(){WarMapNetwork.CHANNEL.sendToServer(new WarMapNetwork.Request(data.table(),centerChunkX(),centerChunkZ()));}
+        private void refresh(){WarMapNetwork.CHANNEL.sendToServer(new WarMapNetwork.Request(data.table(),centerChunkX(),centerChunkZ(),false));}
         private void command(String action,String payload){
             WarMapNetwork.CHANNEL.sendToServer(new WarMapNetwork.Action(data.table(),action,payload,centerChunkX(),centerChunkZ()));
         }
