@@ -50,7 +50,7 @@ public final class ProductionClient {
                     text(g,title,x+13,yy+4,w-26,MinecraftMenu.TEXT);
                     text(g,source.running()?"Next cycle in "+ProductionText.time(source.seconds()):"PAUSED - "+source.status().replace("Paused: ",""),x+13,yy+15,w-26,source.running()?MinecraftMenu.GREEN:MinecraftMenu.RED);
                     text(g,source.location(),x+13,yy+26,w-26,MinecraftMenu.MUTED);
-                    if(mx>=x+8&&mx<x+w-8&&my>=yy&&my<yy+36)g.renderComponentTooltip(font,List.of(Component.literal(source.location()),Component.literal(source.status()),Component.literal("Last 60 seconds delivered: "+ProductionText.count(data.actual()[selected]))),mx,my);
+                    if(mx>=x+8&&mx<x+w-8&&my>=yy&&my<yy+36)g.renderComponentTooltip(font,List.of(Component.literal(source.location()),Component.literal(source.status()),Component.literal("Kingdom total delivered in last 60 seconds: "+ProductionText.count(data.actual()[selected]))),mx,my);
                 }
                 if(list.isEmpty())text(g,"No producer for this resource.",x+12,y+76,w-24,MinecraftMenu.TEXT);
             }
