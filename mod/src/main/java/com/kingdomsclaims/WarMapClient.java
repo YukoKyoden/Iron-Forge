@@ -62,7 +62,7 @@ public final class WarMapClient {
         private int rosterTop(){return 111;}
         private int rosterRows(){return Math.max(1,Math.min(4,(height-316)/23));}
         private int summaryTop(){return rosterTop()+rosterRows()*23+6;}
-        private int summaryHeight(){return height<300?38:48;}
+        private int summaryHeight(){return height<300?16:48;}
         private int ordersLabelY(){return summaryTop()+summaryHeight()+6;}
         private int ordersTop(){return ordersLabelY()+14;}
         private int ordersBottom(){return height-39;}
@@ -328,12 +328,12 @@ public final class WarMapClient {
                 String line2=site!=null?site.progress()+"% | Stock "+site.stock()+(site.scouted()?" / "+site.total():" / ?"):caravan!=null?caravan.amount()+" cargo":"Select army above and site on map";
                 String line3=site!=null?(site.scouted()?"Duration: "+site.duration()+"s":"Scout to reveal exact yield"):"Destination: "+caravanX+", "+caravanZ;
                 g.drawString(font,clip(line1,sw-12),inner+5,summaryY+5,0xFF404040,false);
-                g.drawString(font,clip(line2,sw-12),inner+5,summaryY+16,0xFF404040,false);
-                g.drawString(font,clip(line3,sw-12),inner+5,summaryY+27,0xFF404040,false);
+                if(summaryHeight()>30)g.drawString(font,clip(line2,sw-12),inner+5,summaryY+16,0xFF404040,false);
+                if(summaryHeight()>38)g.drawString(font,clip(line3,sw-12),inner+5,summaryY+27,0xFF404040,false);
             }else if(a!=null){
-                g.drawString(font,clip(a.name(),sw-12),inner+5,summaryY+5,0xFF404040,false);
-                g.drawString(font,clip((a.strength()+a.fielded())+" troops / "+a.fielded()+" represented",sw-12),inner+5,summaryY+16,0xFF404040,false);
-                g.drawString(font,clip("X "+a.x()+"  Z "+a.z()+"  "+a.order().toUpperCase(),sw-12),inner+5,summaryY+27,0xFF404040,false);
+                g.drawString(font,clip(a.name()+(summaryHeight()<30?" / "+(a.strength()+a.fielded())+" troops":""),sw-12),inner+5,summaryY+5,0xFF404040,false);
+                if(summaryHeight()>30)g.drawString(font,clip((a.strength()+a.fielded())+" troops / "+a.fielded()+" represented",sw-12),inner+5,summaryY+16,0xFF404040,false);
+                if(summaryHeight()>38)g.drawString(font,clip("X "+a.x()+"  Z "+a.z()+"  "+a.order().toUpperCase(),sw-12),inner+5,summaryY+27,0xFF404040,false);
             }else g.drawString(font,"Select or create an army",inner+5,summaryY+12,0xFF404040,false);
             g.drawString(font,missions?"MISSIONS / CARAVANS (scroll)":"ORDERS (scroll to see more)",inner,ordersLabelY(),0xFF404040,false);
             int visible=visibleOrderRows();
