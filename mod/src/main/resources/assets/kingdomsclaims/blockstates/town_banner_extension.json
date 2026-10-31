@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "tier=1": {
+      "model": "kingdomsclaims:block/town_banner_segment_1"
+    },
+    "tier=2": {
+      "model": "kingdomsclaims:block/town_banner_segment_2"
+    }
+  }
+}

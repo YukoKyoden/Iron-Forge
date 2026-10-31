@@ -1,0 +1,5 @@
+# v0.4.16 Resource Manager — UI and controlled transfers
+
+The 3D Kingdom Planner now has Resources → STOCKPILE / FINANCES pages. All six existing managed goods (iron, coal, logs, wheat, stone, emeralds) display personal inventory and faction stockpile counts together. Select a resource, deposit up to 64, withdraw up to 64, or store all carried goods in one action. Withdrawals require STORAGE permission and a full inventory-capacity check before stock is debited. Gold deposits and taxes are on FINANCES, alongside five-minute upkeep and estimated funding cycles. No automatic production, caravan, territory, or blueprint costs were changed. Existing Iron/Wheat treasury and other OperationsData goods storage are reused; no migration or data loss is intended. Legacy commands and War Table controls remain.
+
+Tradeoffs: one material item variant per category (e.g. oak logs / cobblestone), as before. Stockpile transfers are server-authoritative; clients cannot specify amounts. Existing worlds should be backed up prior to testing.

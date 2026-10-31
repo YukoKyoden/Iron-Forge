@@ -1,0 +1,37 @@
+name: Unpack editable Kingdoms & Claims source
+on:
+  push:
+    branches:
+      - kingdoms-claims-v0426-simplification
+    paths:
+      - '.github/workflows/unpack-source.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  unpack:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Extract version 0.4.25.2 source for editing
+        run: |
+          set -euo pipefail
+          mkdir -p extracted
+          base64 -d kingdomsclaims-v04252-src.b64.txt > /tmp/kc-source.tar.xz
+          tar -xJf /tmp/kc-source.tar.xz -C extracted
+          test -f extracted/kingdoms-claims-forge/build.gradle
+          mkdir -p mod
+          cp -a extracted/kingdoms-claims-forge/. mod/
+          rm -rf extracted
+          printf "Source unpacked to mod/ for v0.4.26 development.\\n" > mod/EDITABLE_SOURCE.md
+      - name: Commit editable source to development branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add mod/
+          if ! git diff --cached --quiet; then
+            git commit -m "Unpack v0.4.25.2 source as editable base for v0.4.26"
+            git push
+          fi

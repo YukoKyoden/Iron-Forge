@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "down": "kingdomsclaims:block/warehouse_core_bottom",
+    "up": "kingdomsclaims:block/warehouse_core_top",
+    "north": "kingdomsclaims:block/warehouse_core_front",
+    "south": "kingdomsclaims:block/warehouse_core_side",
+    "east": "kingdomsclaims:block/warehouse_core_side",
+    "west": "kingdomsclaims:block/warehouse_core_side",
+    "particle": "kingdomsclaims:block/warehouse_core_side"
+  }
+}

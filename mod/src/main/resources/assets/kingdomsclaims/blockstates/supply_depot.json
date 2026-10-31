@@ -1,0 +1,20 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "kingdomsclaims:block/supply_depot",
+      "y": 0
+    },
+    "facing=east": {
+      "model": "kingdomsclaims:block/supply_depot",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "kingdomsclaims:block/supply_depot",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "kingdomsclaims:block/supply_depot",
+      "y": 270
+    }
+  }
+}

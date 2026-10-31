@@ -1,0 +1,5 @@
+import com.kingdomsclaims.MarkerArea;
+public class MarkerAreaTest {
+    static void check(boolean b,String s){if(!b)throw new AssertionError(s);}
+    public static void main(String[] args){int count=0;for(int x=-9;x<=9;x++)for(int z=-9;z<=9;z++)for(int y=-1;y<=37;y++)if(MarkerArea.containsWood(0,0,0,x,y,z))count++;check(count==15*15*35,"exact 15x15 footprint and 35 blocks upward");check(MarkerArea.containsWood(0,0,0,7,35,-7),"outer upper corner included");check(!MarkerArea.containsWood(0,0,0,8,1,0)&&!MarkerArea.containsWood(0,0,0,0,36,0)&&!MarkerArea.containsWood(0,0,0,0,0,0),"outside bounds excluded");check(!MarkerArea.containsWood(Integer.MIN_VALUE,0,0,Integer.MAX_VALUE,1,0),"coordinate overflow cannot join distant areas");check(MarkerArea.woodOutput(7,100)==0&&MarkerArea.woodOutput(8,7)==0,"logs and leaves both required");check(MarkerArea.woodOutput(16,8)==2&&MarkerArea.woodOutput(10000,10000)==32,"existing wood balance and cap retained");System.out.println("Production marker bounds and wood output regressions passed.");}
+}

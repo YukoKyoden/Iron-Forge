@@ -1,0 +1,3 @@
+# Kingdoms & Claims v0.4.25.2 — All stock is physical
+
+Gold ingots and gold nuggets are now physical warehouse goods, usable in all warehouse transfers and logistics. Crown deposits into an invisible account have been removed. Payroll consumes gold nuggets, or ingots at nine nuggets per ingot, from the same nearby warehouse used for upkeep iron/wheat. Newly collected taxes become actual gold in a warehouse; if there is no room, they remain pending and cannot be spent until deposited. Old Crowns convert to ingots at 9:1 plus exact leftover nuggets without deleting saved data. No forced chunk loads, per-tick inventory search, or animated renderers.
