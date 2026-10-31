@@ -5,7 +5,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 public final class ManagerClient {
-    public static void accept(ManagerNetwork.View data){var mc=Minecraft.getInstance();if(mc.screen instanceof ManagerScreen s){s.data=data;s.rebuild();}else mc.setScreen(new ManagerScreen(data));}
+    public static void accept(ManagerNetwork.View data){if(ProductionClient.active())return;var mc=Minecraft.getInstance();if(mc.screen instanceof ManagerScreen s){s.data=data;s.rebuild();}else mc.setScreen(new ManagerScreen(data));}
     private static final class ManagerScreen extends Screen {
         private ManagerNetwork.View data;private int tab=0,page=0,ticks=0;private final String[] tabs={"Kingdom","Stockpile","Build","Army","Map"};
         ManagerScreen(ManagerNetwork.View v){super(Component.literal("Kingdom Manager"));data=v;}

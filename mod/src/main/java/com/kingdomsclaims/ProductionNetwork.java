@@ -17,7 +17,7 @@ public final class ProductionNetwork {
     public static void request(){DistExecutor.unsafeRunWhenOn(Dist.CLIENT,()->()->ProductionClient.expect());CHANNEL.sendToServer(new Request());}
     public record Request(){
         static void write(Request r,FriendlyByteBuf b){}static Request read(FriendlyByteBuf b){return new Request();}
-        static void handle(Request r,Supplier<NetworkEvent.Context> supplier){var c=supplier.get();var p=c.getSender();if(p!=null)c.enqueueWork(()->{int now=p.server.getTickCount();if(now-cooldown.getOrDefault(p.getUUID(),-100)<20)return;cooldown.put(p.getUUID(),now);open(p);});c.setPacketHandled(true);}
+        static void handle(Request r,Supplier<NetworkEvent.Context> supplier){var c=supplier.get();var p=c.getSender();if(p!=null)c.enqueueWork(()->{int now=p.server.getTickCount();int last=cooldown.getOrDefault(p.getUUID(),-100);if(now>=last&&now-last<20)return;cooldown.put(p.getUUID(),now);open(p);});c.setPacketHandled(true);}
     }
     public record Source(String name,String location,int mask,int[] maximum,String status,int seconds,boolean running){
         static void write(Source r,FriendlyByteBuf b){b.writeUtf(r.name,32);b.writeUtf(r.location,90);b.writeVarInt(r.mask);for(int n:r.maximum)b.writeVarInt(n);b.writeUtf(r.status,140);b.writeVarInt(r.seconds);b.writeBoolean(r.running);}

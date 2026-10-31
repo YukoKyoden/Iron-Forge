@@ -9,6 +9,7 @@ import net.minecraft.world.item.ItemStack;
 /** Production quantities are visible rows, rather than indicators hidden behind item tooltips. */
 public final class ProductionClient {
     private static Screen returnTo;private static boolean pendingOpen=false;
+    public static boolean active(){return pendingOpen||Minecraft.getInstance().screen instanceof ProductionScreen;}
     public static void expect(){if(!(Minecraft.getInstance().screen instanceof ProductionScreen))pendingOpen=true;}
     public static void accept(ProductionNetwork.View data){var mc=Minecraft.getInstance();if(mc.screen instanceof ProductionScreen s)s.data=data;else if(pendingOpen){pendingOpen=false;returnTo=mc.screen;mc.setScreen(new ProductionScreen(data));}}
     private static final String[] NAMES={"Iron","Coal","Wood","Wheat","Stone","Emeralds","Gold ingots","Gold nuggets"};

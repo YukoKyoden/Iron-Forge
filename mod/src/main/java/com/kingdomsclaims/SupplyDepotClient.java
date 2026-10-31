@@ -5,7 +5,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 public final class SupplyDepotClient {
-    public static void accept(SupplyDepotNetwork.View p){var mc=Minecraft.getInstance();if(mc.screen instanceof DepotScreen s)s.data=p;else mc.setScreen(new DepotScreen(p));}
+    public static void accept(SupplyDepotNetwork.View p){if(ProductionClient.active())return;var mc=Minecraft.getInstance();if(mc.screen instanceof DepotScreen s)s.data=p;else mc.setScreen(new DepotScreen(p));}
     private static final class DepotScreen extends Screen {
         SupplyDepotNetwork.View data;int selected=0,ticks=0,page=0;
         DepotScreen(SupplyDepotNetwork.View p){super(Component.literal("Kingdom Warehouse"));data=p;}
