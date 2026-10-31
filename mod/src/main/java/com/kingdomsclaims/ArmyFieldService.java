@@ -21,7 +21,7 @@ public final class ArmyFieldService {
             ServerLevel w=RegisteredBuildings.world(server,a.dimension);if(w==null)continue;
             if(a.order.equals("follow")){
                 var captain=a.commander==null?null:server.getPlayerList().getPlayer(a.commander);
-                if(captain==null||captain.serverLevel()!=w){a.order="hold";a.marching=false;a.commander=null;}
+                if(captain==null||captain.serverLevel()!=w){a.order="hold";a.marching=false;a.commander=null;a.rallyX=(int)Math.round(a.locationX);a.rallyZ=(int)Math.round(a.locationZ);}
                 else{a.rallyX=captain.getBlockX();a.rallyZ=captain.getBlockZ();a.marching=Math.hypot(a.locationX-a.rallyX,a.locationZ-a.rallyZ)>4;}
                 data.setDirty();
             }
