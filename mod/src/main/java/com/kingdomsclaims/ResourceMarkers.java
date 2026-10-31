@@ -23,9 +23,10 @@ public final class ResourceMarkers {
     public static void inspect(ServerLevel w,BlockPos p,ServerPlayer player,String type){
         if(!KingdomService.authorized(player,w,p,KingdomData.BUILD))return;var b=register(w,p,player,type);if(b==null)return;
         long seconds=Math.max(0,(b.next-w.getServer().overworld().getGameTime()+19)/20);
-        String detail=b.surveyDetail.isEmpty()?b.type+": "+b.capacity+" productive sections; next scan updates the readout.":b.surveyDetail;
-        player.sendSystemMessage(Component.literal("["+(type.equals("mine")?"Mine":"Woodcutter")+"] "+detail));
-        player.sendSystemMessage(Component.literal("Next scan / production in "+seconds/60+":"+String.format("%02d",seconds%60)+". Right-click shows the latest scan."));
+        boolean mine=type.equals("mine");String label=mine?"Mine":"Woodcutter";
+        player.sendSystemMessage(Component.literal("["+label+"] "+(b.capacity>0?ProductionText.rate(mine?b.capacity:b.capacity*2,360)+(mine?" iron":" wood"):"PAUSED - "+b.surveyDetail)));
+        player.sendSystemMessage(Component.literal(mine?"Connected rails: "+b.connectedRails+" | Productive sections: "+b.capacity:"Found: "+b.detectedLogs+" logs, "+b.detectedLeaves+" leaves | Area: 15x15, 35 up"));
+        player.sendSystemMessage(Component.literal("Next cycle in "+ProductionText.time((int)Math.min(Integer.MAX_VALUE,seconds))+". Right-click shows the latest scan."));
     }
     public static void remove(ServerLevel w,BlockPos p){var registry=RegisteredBuildings.get(w.getServer());boolean changed=registry.buildings.removeIf(b->b.autoProducer&&b.dimension.equals(KingdomData.dim(w))&&p.equals(b.marker));if(changed)registry.setDirty();}
     @SubscribeEvent(priority=EventPriority.LOWEST) public static void placed(BlockEvent.EntityPlaceEvent e){

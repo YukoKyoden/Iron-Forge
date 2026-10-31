@@ -12,6 +12,6 @@ public final class ResourceSlots {
         var item=EconomyService.goodsItem(good);if(item!=null)g.renderItem(new ItemStack(item),x+12,y+3);
         g.drawCenteredString(font,compact(count),x+20,y+23,cost>count?0xFFFF7777:0xFFFFFFFF);
         if(rate!=0)g.drawString(font,rate>0?"+":"-",x+3,y+3,rate>0?0xFF6EE98A:0xFFFF7777,false);
-        if(mx>=x&&mx<x+40&&my>=y&&my<y+40)g.renderComponentTooltip(font,List.of(Component.literal((item==null?good:item.getDescription().getString())+": "+count),Component.literal("Production: up to "+Math.max(0,rate)+" / 6 minutes"),Component.literal(cost>0?"Next upkeep: "+cost:"Kingdom shared stockpile")),mx,my);
+        if(mx>=x&&mx<x+40&&my>=y&&my<y+40){List<Component> lines=new ArrayList<>();lines.add(Component.literal((item==null?good:item.getDescription().getString())+" stored: "+ProductionText.count(count)));if(rate>0)lines.add(Component.literal("Production: +"+rate+" every 6 minutes"));if(cost>0)lines.add(Component.literal("Required: "+ProductionText.count(cost)));g.renderComponentTooltip(font,lines,mx,my);}
     }
 }
