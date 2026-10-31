@@ -12,7 +12,7 @@ import net.minecraft.world.item.Items;
 public final class OperationsService {
     private OperationsService(){}
     private static final int RANGE=2048;
-    public static int producedPerMinute(String type){return switch(type){
+    public static int producedPerCycle(String type){return switch(type){
         case "MINE"->4;case "FARM"->8;case "FOREST"->6;case "QUARRY"->6;case "RUINS"->2;default->0;};
     }
     private static final Map<String,Item> GOODS=Map.of("IRON",Items.IRON_INGOT,"COAL",Items.COAL,"LOGS",Items.OAK_LOG,"WHEAT",Items.WHEAT,"STONE",Items.COBBLESTONE,"EMERALDS",Items.EMERALD,"GOLD",Items.GOLD_INGOT,"GOLD_NUGGETS",Items.GOLD_NUGGET);
@@ -167,11 +167,11 @@ public final class OperationsService {
             }
             if(army==null||s.attacker!=null)continue;
             if(s.stage.equals("OUTPOST")&&at(army,s.x,s.z)&&EconomyService.funded(server,s.owner)){
-                // Once per minute, not per tick: live garrisons work a mine, farm, forest or quarry.
+                // Once per six minutes, not per tick: live garrisons work a mine, farm, forest or quarry.
                 s.passiveSeconds++;
-                if(s.passiveSeconds>=60){
+                if(s.passiveSeconds>=ProductionClock.SECONDS){
                     s.passiveSeconds=0;
-                    int produced=producedPerMinute(s.type);
+                    int produced=producedPerCycle(s.type);
                     // Hold undelivered output at this site; pause at the cap when warehouse is full.
                     s.stock=Math.min(256,s.stock+Math.min(produced,Math.max(0,256-s.stock)));
                     d.setDirty();

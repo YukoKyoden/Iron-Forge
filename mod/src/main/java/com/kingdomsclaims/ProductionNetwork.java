@@ -49,8 +49,8 @@ public final class ProductionNetwork {
             if(sources.size()>=599)break;if(site.owner==null||!owner.equals(SharedStockpile.owner(server,site.owner))||!site.stage.equals("OUTPOST"))continue;
             var army=MilitaryData.get(server).armies.get(site.army);boolean stationed=army!=null&&!army.marching&&Math.hypot(army.locationX-site.x,army.locationZ-site.z)<2.5;
             String status=full?"Paused: stockpile full":!EconomyService.funded(server,owner)?"Paused: upkeep unpaid":!stationed?"Paused: garrison is away":"Producing at military outpost";
-            int index=Arrays.asList(OperationsData.GOODS).indexOf(site.good());if(index<0)continue;int[] maximum=new int[8];maximum[index]=OperationsService.producedPerMinute(site.type);
-            sources.add(new Source("Outpost "+site.type,site.dim+" "+site.x+", "+site.z,1<<index,maximum,status,Math.max(0,60-site.passiveSeconds),!status.startsWith("Paused")));
+            int index=Arrays.asList(OperationsData.GOODS).indexOf(site.good());if(index<0)continue;int[] maximum=new int[8];maximum[index]=OperationsService.producedPerCycle(site.type);
+            sources.add(new Source("Outpost "+site.type,site.dim+" "+site.x+", "+site.z,1<<index,maximum,status,Math.max(0,ProductionClock.SECONDS-site.passiveSeconds),!status.startsWith("Paused")));
         }
         var city=DistrictData.get(server);sources.add(new Source("Population taxes","Kingdom income",128,new int[8],"Income: "+city.estimatedTaxes(owner)+" gold nuggets / 5 min",EconomyService.untilPayment(server,owner),EconomyService.funded(server,owner)));
         int[] maximum=new int[8],balances=new int[8],upkeep=new int[8];for(Source source:sources)if(source.running)for(int i=0;i<8;i++)maximum[i]=(int)Math.min(Integer.MAX_VALUE,(long)maximum[i]+source.maximum[i]);for(int i=0;i<8;i++)balances[i]=stock.amount(owner,OperationsData.GOODS[i]);upkeep[0]=EconomyService.ironDue(server,owner);upkeep[3]=EconomyService.wheatDue(server,owner);upkeep[7]=EconomyService.goldDue(server,owner);

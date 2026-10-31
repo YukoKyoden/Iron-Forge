@@ -33,7 +33,7 @@ public final class ManagerClient {
                 g.drawString(font,data.funded()?"Upkeep in "+data.seconds()+" seconds":"UPKEEP OVERDUE - missing resources",x+120,y+86,data.funded()?0xFF246B26:0xFFA01919,false);
                 int[] ids={0,3,7};for(int i=0;i<3;i++){int n=ids[i];ResourceSlots.slot(g,x+120+i*50,y+105,OperationsData.GOODS[n],data.stock()[n],0,data.upkeep()[n],mx,my);g.drawString(font,"-"+data.upkeep()[n],x+126+i*50,y+147,0xFF404040,false);}
             }
-            if(tab==1){for(int i=0;i<8;i++){int xx=x+120+(i%4)*74,yy=y+40+(i/4)*55;ResourceSlots.slot(g,xx,yy,OperationsData.GOODS[i],data.stock()[i],data.rates()[i],data.upkeep()[i],mx,my);g.drawString(font,"max +"+data.rates()[i]+"/m",xx,yy+42,0xFF404040,false);}
+            if(tab==1){for(int i=0;i<8;i++){int xx=x+120+(i%4)*74,yy=y+40+(i/4)*55;ResourceSlots.slot(g,xx,yy,OperationsData.GOODS[i],data.stock()[i],data.rates()[i],data.upkeep()[i],mx,my);g.drawString(font,"max +"+data.rates()[i]+"/6m",xx,yy+42,0xFF404040,false);}
                 g.drawString(font,"Storage  "+data.used()+" / "+data.storage(),x+120,y+158,0xFF404040,false);g.drawString(font,"Deposit / withdraw items at any warehouse core.",x+120,y+174,0xFF404040,false);
             }
             if(tab==2){g.drawString(font,"Registered structures: "+data.buildings().size(),x+120,y+62,0xFF404040,false);int start=page*5;for(int i=start;i<Math.min(start+5,data.buildings().size());i++){var r=data.buildings().get(i);g.drawString(font,font.plainSubstrByWidth(r.type()+"  "+r.capacity()+"  "+r.location(),236),x+120,y+82+(i-start)*24,r.active()?0xFF246B26:0xFFA01919,false);}}

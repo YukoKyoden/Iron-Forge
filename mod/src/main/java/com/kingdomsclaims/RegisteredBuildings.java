@@ -20,7 +20,7 @@ public final class RegisteredBuildings extends SavedData {
     public static final int MAX_VOLUME=32768,MAX_BUILDINGS=512;
     public static final class Building {
         public UUID id=UUID.randomUUID(),owner;public String dimension,type;public BlockPos min,max;
-        public int capacity=0;public boolean dirty=true;public long next=0;
+        public int capacity=0;public boolean dirty=true;public long next=0;public transient long nextValidation=0;
         Building(UUID owner,String dim,String type,BlockPos min,BlockPos max){this.owner=owner;dimension=dim;this.type=type;this.min=min;this.max=max;}
         boolean contains(BlockPos p){return p.getX()>=min.getX()&&p.getX()<=max.getX()&&p.getY()>=min.getY()&&p.getY()<=max.getY()&&p.getZ()>=min.getZ()&&p.getZ()<=max.getZ();}
     }
@@ -28,14 +28,14 @@ public final class RegisteredBuildings extends SavedData {
     public final List<Building> buildings=new ArrayList<>();private int cursor=0;
     public static RegisteredBuildings get(MinecraftServer s){return s.overworld().getDataStorage().computeIfAbsent(RegisteredBuildings::load,RegisteredBuildings::new,"kingdomsclaims_registered_buildings");}
     public static RegisteredBuildings load(CompoundTag root){
-        RegisteredBuildings d=new RegisteredBuildings();
+        RegisteredBuildings d=new RegisteredBuildings();int previousInterval=root.contains("ProductionIntervalTicks")?Math.max(20,root.getInt("ProductionIntervalTicks")):1200;
         for(Tag entry:root.getList("Buildings",Tag.TAG_COMPOUND)){
             CompoundTag t=(CompoundTag)entry;if(!t.hasUUID("Owner")||d.buildings.size()>=MAX_BUILDINGS)continue;
             Building b=new Building(t.getUUID("Owner"),t.getString("Dimension"),t.getString("Type"),BlockPos.of(t.getLong("Min")),BlockPos.of(t.getLong("Max")));
-            if(t.hasUUID("Id"))b.id=t.getUUID("Id");b.capacity=Math.max(0,t.getInt("Capacity"));b.dirty=t.getBoolean("Dirty");b.next=Math.max(0,t.getLong("Next"));d.buildings.add(b);
-        }return d;
+            if(t.hasUUID("Id"))b.id=t.getUUID("Id");b.capacity=Math.max(0,t.getInt("Capacity"));b.dirty=t.getBoolean("Dirty");b.next=Math.max(0,t.getLong("Next"));if(previousInterval!=ProductionClock.TICKS&&(b.type.equals("farm")||b.type.equals("mine")||b.type.equals("lumber camp")))b.next=ProductionClock.upgradeDeadline(b.next,previousInterval);d.buildings.add(b);
+        }if(previousInterval!=ProductionClock.TICKS)d.setDirty();return d;
     }
-    @Override public CompoundTag save(CompoundTag root){ListTag list=new ListTag();for(Building b:buildings){
+    @Override public CompoundTag save(CompoundTag root){root.putInt("ProductionIntervalTicks",ProductionClock.TICKS);ListTag list=new ListTag();for(Building b:buildings){
         CompoundTag t=new CompoundTag();t.putUUID("Id",b.id);t.putUUID("Owner",b.owner);t.putString("Dimension",b.dimension);t.putString("Type",b.type);
         t.putLong("Min",b.min.asLong());t.putLong("Max",b.max.asLong());t.putLong("Next",b.next);t.putInt("Capacity",b.capacity);t.putBoolean("Dirty",b.dirty);list.add(t);
     }root.put("Buildings",list);return root;}
@@ -76,10 +76,10 @@ public final class RegisteredBuildings extends SavedData {
         if(issue!=null)return new Survey(0,issue);if(!canRegister(p,b))return new Survey(0,"BUILD permission required throughout selection.");return scan(p.serverLevel(),b);
     }
     public String register(ServerPlayer p,BlockPos a,BlockPos c,String type){Survey survey=preview(p,a,c,type);if(survey.capacity<=0)return survey.detail;
-        var f=BlueprintService.atPlayer(p);Building b=selection(f.id(),KingdomData.dim(p.serverLevel()),a,c,type);b.capacity=survey.capacity;b.dirty=false;b.next=p.server.overworld().getGameTime()+1200;
+        var f=BlueprintService.atPlayer(p);Building b=selection(f.id(),KingdomData.dim(p.serverLevel()),a,c,type);b.capacity=survey.capacity;b.dirty=false;b.next=p.server.overworld().getGameTime()+ProductionClock.TICKS;b.nextValidation=p.server.overworld().getGameTime()+ProductionClock.VALIDATION_TICKS;
         buildings.add(b);setDirty();return "Registered "+b.type+": "+survey.detail;
     }
-    public String register(ServerLevel w,UUID owner,BlockPos a,BlockPos c,String type){Building b=selection(owner,KingdomData.dim(w),a,c,type);String issue=issue(w,b);if(issue!=null)return issue;Survey survey=scan(w,b);if(survey.capacity<=0)return survey.detail;b.capacity=survey.capacity;b.dirty=false;b.next=w.getServer().overworld().getGameTime()+1200;buildings.add(b);setDirty();return "Registered "+b.type+": "+survey.detail;}
+    public String register(ServerLevel w,UUID owner,BlockPos a,BlockPos c,String type){Building b=selection(owner,KingdomData.dim(w),a,c,type);String issue=issue(w,b);if(issue!=null)return issue;Survey survey=scan(w,b);if(survey.capacity<=0)return survey.detail;b.capacity=survey.capacity;b.dirty=false;b.next=w.getServer().overworld().getGameTime()+ProductionClock.TICKS;b.nextValidation=w.getServer().overworld().getGameTime()+ProductionClock.VALIDATION_TICKS;buildings.add(b);setDirty();return "Registered "+b.type+": "+survey.detail;}
     private static boolean roof(ServerLevel w,BlockPos p,Building b){for(int dy=2;dy<=Math.min(8,b.max.getY()-p.getY());dy++)if(w.getBlockState(p.above(dy)).isSolidRender(w,p.above(dy)))return true;return false;}
     private static Survey scan(ServerLevel w,Building b){
         int beds=0,plots=0,storage=0,logs=0,leaves=0,stone=0,air=0,doors=0,stations=0;
@@ -101,10 +101,10 @@ public final class RegisteredBuildings extends SavedData {
         }
         return switch(b.type){
             case "house"->new Survey(doors>0?beds:0,beds+" sheltered beds; an entrance door is required");
-            case "farm"->new Survey(plots,plots+" hydrated wheat plots; +"+plots+" wheat/min (passive; crops stay planted)");
+            case "farm"->new Survey(plots,plots+" hydrated wheat plots; +"+plots+" wheat/6 min (passive; crops stay planted)");
             case "warehouse"->new Survey(storage,storage+" storage slots (chests, barrels, standalone shelves)");
-            case "mine"->new Survey(stone>=24&&air>=12?Math.min(16,stone/24):0,"Needs 24 natural stone/ore blocks and 12 excavated underground spaces; +iron/coal each minute");
-            case "lumber camp"->new Survey(logs>=8&&leaves>=8?Math.min(32,logs/8):0,"Needs 8 tree logs and 8 leaves; +wood each minute");
+            case "mine"->new Survey(stone>=24&&air>=12?Math.min(16,stone/24):0,"Needs 24 natural stone/ore blocks and 12 excavated underground spaces; +iron/coal every 6 minutes");
+            case "lumber camp"->new Survey(logs>=8&&leaves>=8?Math.min(32,logs/8):0,"Needs 8 tree logs and 8 leaves; +wood every 6 minutes");
             case "barracks"->new Survey(beds>0&&stations>0?beds*50:0,"Needs sheltered beds and a crafting, smithing or fletching table; "+(beds*50)+" troop capacity");
             default->new Survey(0,"Unknown building type");
         };
@@ -124,14 +124,14 @@ public final class RegisteredBuildings extends SavedData {
             Building b=buildings.get((cursor++)%buildings.size());ServerLevel w=world(s,b.dimension);
             if(w==null||!ownsClaims(w,b,false)){b.capacity=0;b.dirty=true;continue;}
             if(!owned(w,b))continue;
-            if(!b.dirty&&now<b.next)continue;
+            if(!b.dirty&&now<b.next&&now<b.nextValidation)continue;
             boolean produce=now>=b.next;Survey survey=scan(w,b);b.capacity=survey.capacity;b.dirty=false;
             if(produce&&b.capacity>0){int cap=PhysicalWarehouses.sharedCapacity(s,b.owner);SharedStockpile stock=SharedStockpile.get(s);
                 if(b.type.equals("farm"))ProductionData.record(s,b.owner,"WHEAT",stock.add(b.owner,"WHEAT",b.capacity,cap));
                 if(b.type.equals("mine")){ProductionData.record(s,b.owner,"IRON",stock.add(b.owner,"IRON",b.capacity,cap));ProductionData.record(s,b.owner,"COAL",stock.add(b.owner,"COAL",b.capacity,cap));ProductionData.record(s,b.owner,"STONE",stock.add(b.owner,"STONE",b.capacity*2,cap));}
                 if(b.type.equals("lumber camp"))ProductionData.record(s,b.owner,"LOGS",stock.add(b.owner,"LOGS",b.capacity,cap));
             }
-            if(produce)b.next=now+1200;setDirty();break;
+            b.nextValidation=now+ProductionClock.VALIDATION_TICKS;if(produce)b.next=now+ProductionClock.TICKS;setDirty();break;
         }
         if(cursor>1000000)cursor=0;
     }
