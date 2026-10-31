@@ -161,7 +161,7 @@ public final class WorldSelectionClient {
     }
     private static final class ModeScreen extends Screen {
         ModeScreen(){super(Component.literal("Architect Wand"));}
-        @Override protected void init(){int x=width/2-110,y=height/2;addRenderableWidget(Button.builder(Component.literal("Register building area"),b->selectMode(false)).bounds(x,y-20,220,22).build());addRenderableWidget(Button.builder(Component.literal("Select Mine Entrance rail"),b->selectMode(true)).bounds(x,y+8,220,22).build());}
+        @Override protected void init(){int x=width/2-110,y=height/2;addRenderableWidget(Button.builder(Component.literal("Register building area"),b->selectMode(false)).bounds(x,y-20,220,22).build());addRenderableWidget(Button.builder(Component.literal("Mine: place a Mine Marker"),b->{Minecraft.getInstance().setScreen(null);var player=Minecraft.getInstance().player;if(player!=null)player.displayClientMessage(Component.literal("Place a Mine Marker beside the entrance. It detects rails automatically; right-click for output."),false);}).bounds(x,y+8,220,22).build());}
         @Override public void render(GuiGraphics g,int x,int y,float p){renderBackground(g);MinecraftMenu.panel(g,width/2-125,height/2-60,width/2+125,height/2+50);g.drawCenteredString(font,"ARCHITECT WAND",width/2,height/2-46,0xFFFFFFFF);super.render(g,x,y,p);}
         @Override public boolean isPauseScreen(){return false;}
     }

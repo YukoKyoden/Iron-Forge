@@ -38,11 +38,13 @@ public final class RailMine {
 
     public static BlockPos surface(ServerLevel w,BlockPos entrance){BlockPos top=w.getHeightmapPos(Heightmap.Types.WORLD_SURFACE,entrance);return new BlockPos(entrance.getX(),Math.max(top.getY(),entrance.getY()+3),entrance.getZ());}
     public static boolean markerValid(ServerLevel w,RegisteredBuildings.Building b){return b.marker!=null&&territory(w,b.owner,b.marker)&&w.getBlockState(b.marker).is(KingdomsClaims.MINE_MARKER.get())&&w.canSeeSky(b.marker.above());}
+    public static BlockPos entrance(RegisteredBuildings.Building b){return b.autoProducer?b.entrance:b.min;}
     public static RegisteredBuildings.Survey scan(ServerLevel w,RegisteredBuildings.Building b){
         if(!b.railMine)return new RegisteredBuildings.Survey(0,"Old mine: unregister and select its entrance rail with the wand.");
         if(!markerValid(w,b))return new RegisteredBuildings.Survey(0,"Mine paused: restore the surface Mine Marker and clear sky above it.");
-        Result r=survey(w,b.owner,b.min);b.mineRails=r.rails;
-        for(var old:RegisteredBuildings.get(w.getServer()).buildings){if(old==b)break;if(old.railMine&&old.dimension.equals(b.dimension)&&Math.abs(old.min.getX()-b.min.getX())<=MAX_RADIUS*2&&Math.abs(old.min.getZ()-b.min.getZ())<=MAX_RADIUS*2){var previous=survey(w,old.owner,old.min);if(r.rails.stream().anyMatch(previous.rails::contains))return new RegisteredBuildings.Survey(0,"Mine paused: connected track overlaps an earlier registered mine.");}}
-        return new RegisteredBuildings.Survey(r.sections,r.detail);
+        BlockPos entrance=entrance(b);if(entrance==null)return new RegisteredBuildings.Survey(0,"No entrance rail detected.");
+        Result r=survey(w,b.owner,entrance);b.mineRails=r.rails;b.connectedRails=r.rails.size();
+        for(var old:RegisteredBuildings.get(w.getServer()).buildings){if(old==b)break;if(old.railMine&&old.dimension.equals(b.dimension)&&Math.abs(old.min.getX()-b.min.getX())<=MAX_RADIUS*2+14&&Math.abs(old.min.getZ()-b.min.getZ())<=MAX_RADIUS*2+14){BlockPos oldEntrance=entrance(old);if(oldEntrance==null)continue;var previous=survey(w,old.owner,oldEntrance);if(r.rails.stream().anyMatch(previous.rails::contains))return new RegisteredBuildings.Survey(0,"Mine paused: connected track overlaps an earlier registered mine.");}}
+        return new RegisteredBuildings.Survey(r.sections,r.rails.size()+" connected rails; "+r.detail);
     }
 }

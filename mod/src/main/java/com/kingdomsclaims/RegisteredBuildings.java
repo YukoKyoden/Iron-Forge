@@ -20,6 +20,7 @@ public final class RegisteredBuildings extends SavedData {
     public static final int MAX_VOLUME=32768,MAX_BUILDINGS=512;
     public static final class Building {
         public UUID id=UUID.randomUUID(),owner;public String dimension,type;public BlockPos min,max;
+        public boolean autoProducer=false;public BlockPos entrance;public int connectedRails=0,detectedLogs=0,detectedLeaves=0;public String surveyDetail="";
         public boolean railMine=false;public BlockPos marker;public int halfIron=0;public transient Set<BlockPos> mineRails=Set.of();
         public int capacity=0;public boolean dirty=true;public long next=0;public transient long nextValidation=0;
         Building(UUID owner,String dim,String type,BlockPos min,BlockPos max){this.owner=owner;dimension=dim;this.type=type;this.min=min;this.max=max;}
@@ -33,12 +34,12 @@ public final class RegisteredBuildings extends SavedData {
         for(Tag entry:root.getList("Buildings",Tag.TAG_COMPOUND)){
             CompoundTag t=(CompoundTag)entry;if(!t.hasUUID("Owner")||d.buildings.size()>=MAX_BUILDINGS)continue;
             Building b=new Building(t.getUUID("Owner"),t.getString("Dimension"),t.getString("Type"),BlockPos.of(t.getLong("Min")),BlockPos.of(t.getLong("Max")));
-            if(t.hasUUID("Id"))b.id=t.getUUID("Id");b.capacity=Math.max(0,t.getInt("Capacity"));b.dirty=t.getBoolean("Dirty");b.next=Math.max(0,t.getLong("Next"));b.railMine=t.getBoolean("RailMine");b.marker=t.contains("Marker")?BlockPos.of(t.getLong("Marker")):null;b.halfIron=Math.max(0,Math.min(1,t.getInt("HalfIron")));if(previousInterval!=ProductionClock.TICKS&&(b.type.equals("farm")||b.type.equals("mine")||b.type.equals("lumber camp")))b.next=ProductionClock.upgradeDeadline(b.next,previousInterval);d.buildings.add(b);
+            if(t.hasUUID("Id"))b.id=t.getUUID("Id");b.capacity=Math.max(0,t.getInt("Capacity"));b.dirty=t.getBoolean("Dirty");b.next=Math.max(0,t.getLong("Next"));b.autoProducer=t.getBoolean("AutoProducer");b.entrance=t.contains("Entrance")?BlockPos.of(t.getLong("Entrance")):null;b.connectedRails=Math.max(0,t.getInt("ConnectedRails"));b.detectedLogs=Math.max(0,t.getInt("DetectedLogs"));b.detectedLeaves=Math.max(0,t.getInt("DetectedLeaves"));b.surveyDetail=t.getString("SurveyDetail");b.railMine=t.getBoolean("RailMine");b.marker=t.contains("Marker")?BlockPos.of(t.getLong("Marker")):null;b.halfIron=Math.max(0,Math.min(1,t.getInt("HalfIron")));if(previousInterval!=ProductionClock.TICKS&&(b.type.equals("farm")||b.type.equals("mine")||b.type.equals("lumber camp")))b.next=ProductionClock.upgradeDeadline(b.next,previousInterval);d.buildings.add(b);
         }if(previousInterval!=ProductionClock.TICKS)d.setDirty();return d;
     }
     @Override public CompoundTag save(CompoundTag root){root.putInt("ProductionIntervalTicks",ProductionClock.TICKS);ListTag list=new ListTag();for(Building b:buildings){
         CompoundTag t=new CompoundTag();t.putUUID("Id",b.id);t.putUUID("Owner",b.owner);t.putString("Dimension",b.dimension);t.putString("Type",b.type);
-        t.putBoolean("RailMine",b.railMine);if(b.marker!=null)t.putLong("Marker",b.marker.asLong());t.putInt("HalfIron",b.halfIron);t.putLong("Min",b.min.asLong());t.putLong("Max",b.max.asLong());t.putLong("Next",b.next);t.putInt("Capacity",b.capacity);t.putBoolean("Dirty",b.dirty);list.add(t);
+        t.putBoolean("AutoProducer",b.autoProducer);if(b.entrance!=null)t.putLong("Entrance",b.entrance.asLong());t.putInt("ConnectedRails",b.connectedRails);t.putInt("DetectedLogs",b.detectedLogs);t.putInt("DetectedLeaves",b.detectedLeaves);t.putString("SurveyDetail",b.surveyDetail);t.putBoolean("RailMine",b.railMine);if(b.marker!=null)t.putLong("Marker",b.marker.asLong());t.putInt("HalfIron",b.halfIron);t.putLong("Min",b.min.asLong());t.putLong("Max",b.max.asLong());t.putLong("Next",b.next);t.putInt("Capacity",b.capacity);t.putBoolean("Dirty",b.dirty);list.add(t);
     }root.put("Buildings",list);return root;}
     public static String type(String raw){String t=raw.toLowerCase(Locale.ROOT).replace('_',' ');return t.equals("lumber")?"lumber camp":t;}
     private static boolean known(String type){for(String t:TYPES)if(t.equalsIgnoreCase(type))return true;return false;}
@@ -78,10 +79,10 @@ public final class RegisteredBuildings extends SavedData {
         if(issue!=null)return new Survey(0,issue);if(!canRegister(p,b))return new Survey(0,"BUILD permission required throughout selection.");return scan(p.serverLevel(),b);
     }
     public String register(ServerPlayer p,BlockPos a,BlockPos c,String type){if(type(type).equals("mine"))return registerMine(p,a);Survey survey=preview(p,a,c,type);if(survey.capacity<=0)return survey.detail;
-        var f=BlueprintService.atPlayer(p);Building b=selection(f.id(),KingdomData.dim(p.serverLevel()),a,c,type);b.capacity=survey.capacity;b.dirty=false;b.next=p.server.overworld().getGameTime()+ProductionClock.TICKS;b.nextValidation=p.server.overworld().getGameTime()+ProductionClock.VALIDATION_TICKS;
+        var f=BlueprintService.atPlayer(p);Building b=selection(f.id(),KingdomData.dim(p.serverLevel()),a,c,type);b.capacity=survey.capacity;b.surveyDetail=survey.detail;b.dirty=false;b.next=p.server.overworld().getGameTime()+ProductionClock.TICKS;b.nextValidation=p.server.overworld().getGameTime()+ProductionClock.VALIDATION_TICKS;
         buildings.add(b);setDirty();return "Registered "+b.type+": "+survey.detail;
     }
-    public String register(ServerLevel w,UUID owner,BlockPos a,BlockPos c,String type){Building b=selection(owner,KingdomData.dim(w),a,c,type);String issue=issue(w,b);if(issue!=null)return issue;Survey survey=scan(w,b);if(survey.capacity<=0)return survey.detail;b.capacity=survey.capacity;b.dirty=false;b.next=w.getServer().overworld().getGameTime()+ProductionClock.TICKS;b.nextValidation=w.getServer().overworld().getGameTime()+ProductionClock.VALIDATION_TICKS;buildings.add(b);setDirty();return "Registered "+b.type+": "+survey.detail;}
+    public String register(ServerLevel w,UUID owner,BlockPos a,BlockPos c,String type){Building b=selection(owner,KingdomData.dim(w),a,c,type);String issue=issue(w,b);if(issue!=null)return issue;Survey survey=scan(w,b);if(survey.capacity<=0)return survey.detail;b.capacity=survey.capacity;b.surveyDetail=survey.detail;b.dirty=false;b.next=w.getServer().overworld().getGameTime()+ProductionClock.TICKS;b.nextValidation=w.getServer().overworld().getGameTime()+ProductionClock.VALIDATION_TICKS;buildings.add(b);setDirty();return "Registered "+b.type+": "+survey.detail;}
     private Survey previewMine(ServerPlayer p,BlockPos entrance){
         var f=BlueprintService.atPlayer(p);if(f==null)return new Survey(0,"BUILD permission required in your claim.");
         if(buildings.stream().filter(x->x.railMine).count()>=32)return new Survey(0,"Registered mine limit reached (32).");
@@ -103,6 +104,7 @@ public final class RegisteredBuildings extends SavedData {
     }
     private static boolean roof(ServerLevel w,BlockPos p,Building b){for(int dy=2;dy<=Math.min(8,b.max.getY()-p.getY());dy++)if(w.getBlockState(p.above(dy)).isSolidRender(w,p.above(dy)))return true;return false;}
     private static Survey scan(ServerLevel w,Building b){
+        if(b.autoProducer)return ResourceMarkers.survey(w,b);
         if(b.type.equals("mine"))return RailMine.scan(w,b);
         int beds=0,plots=0,storage=0,logs=0,leaves=0,stone=0,air=0,doors=0,stations=0;
         for(BlockPos p:BlockPos.betweenClosed(b.min,b.max)){
@@ -146,18 +148,19 @@ public final class RegisteredBuildings extends SavedData {
             Building b=buildings.get((cursor++)%buildings.size());ServerLevel w=world(s,b.dimension);
             if(w==null||!ownsClaims(w,b,false)){b.capacity=0;b.dirty=true;continue;}
             if(!owned(w,b))continue;
+            if(b.autoProducer&&now<b.next)continue;
             if(!b.dirty&&now<b.next&&now<b.nextValidation)continue;
-            boolean produce=now>=b.next;Survey survey=scan(w,b);b.capacity=survey.capacity;b.dirty=false;
+            boolean produce=now>=b.next;Survey survey=scan(w,b);b.capacity=survey.capacity;b.surveyDetail=survey.detail;b.dirty=false;
             if(produce&&b.capacity>0){int cap=PhysicalWarehouses.sharedCapacity(s,b.owner);SharedStockpile stock=SharedStockpile.get(s);
                 if(b.type.equals("farm"))ProductionData.record(s,b.owner,"WHEAT",stock.add(b.owner,"WHEAT",b.capacity,cap));
                 if(b.type.equals("mine")){int iron=RailNetwork.wholeIron(b.capacity,b.halfIron);b.halfIron=RailNetwork.carry(b.capacity,b.halfIron);ProductionData.record(s,b.owner,"IRON",stock.add(b.owner,"IRON",iron,cap));}
                 if(b.type.equals("lumber camp"))ProductionData.record(s,b.owner,"LOGS",stock.add(b.owner,"LOGS",b.capacity,cap));
             }
-            b.nextValidation=now+ProductionClock.VALIDATION_TICKS;if(produce)b.next=now+ProductionClock.TICKS;setDirty();break;
+            b.nextValidation=now+(b.autoProducer?ProductionClock.TICKS:ProductionClock.VALIDATION_TICKS);if(produce)b.next=now+ProductionClock.TICKS;setDirty();break;
         }
         if(cursor>1000000)cursor=0;
     }
-    public void changed(ServerLevel w,BlockPos p){boolean found=false;for(Building b:buildings)if(b.dimension.equals(KingdomData.dim(w))&&(b.type.equals("mine")?(b.marker!=null&&p.getX()==b.marker.getX()&&p.getZ()==b.marker.getZ()&&p.getY()>=b.marker.getY()||Math.abs(p.getX()-b.min.getX())<=129&&Math.abs(p.getZ()-b.min.getZ())<=129):b.contains(p))){b.capacity=0;b.dirty=true;found=true;}if(found)setDirty();}
+    public void changed(ServerLevel w,BlockPos p){boolean found=false;for(Building b:buildings)if(!b.autoProducer&&b.dimension.equals(KingdomData.dim(w))&&(b.type.equals("mine")?(b.marker!=null&&p.getX()==b.marker.getX()&&p.getZ()==b.marker.getZ()&&p.getY()>=b.marker.getY()||Math.abs(p.getX()-b.min.getX())<=129&&Math.abs(p.getZ()-b.min.getZ())<=129):b.contains(p))){b.capacity=0;b.dirty=true;found=true;}if(found)setDirty();}
     @SubscribeEvent public static void notified(BlockEvent.NeighborNotifyEvent e){if(!e.isCanceled()&&e.getLevel() instanceof ServerLevel w)get(w.getServer()).changed(w,e.getPos());}
     @SubscribeEvent public static void exploded(net.minecraftforge.event.level.ExplosionEvent.Detonate e){if(e.getLevel() instanceof ServerLevel w)for(BlockPos p:e.getAffectedBlocks())get(w.getServer()).changed(w,p);}
     @SubscribeEvent public static void placed(BlockEvent.EntityPlaceEvent e){if(!e.isCanceled()&&e.getLevel() instanceof ServerLevel w)get(w.getServer()).changed(w,e.getPos());}

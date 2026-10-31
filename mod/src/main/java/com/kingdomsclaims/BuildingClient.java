@@ -15,7 +15,7 @@ public final class BuildingClient {
         public RegisterScreen(BlockPos a,BlockPos b,boolean mine){this(a,b);mineOnly=mine;if(mine)type=3;}
         private void send(boolean confirm){BuildingNetwork.CHANNEL.sendToServer(new BuildingNetwork.Request(a,b,RegisteredBuildings.TYPES[type],confirm));}
         @Override protected void init(){int x=width/2-150,y=height/2-100;
-            for(int i=0;i<6;i++){final int t=i;if(mineOnly&&i!=3)continue;addRenderableWidget(Button.builder(Component.literal(RegisteredBuildings.TYPES[i]),v->{if(t==3&&!mineOnly){WorldSelectionClient.stop();Minecraft.getInstance().setScreen(null);WorldSelectionClient.selectMode(true);return;}type=t;valid=false;send(false);}).bounds(x+(i%2)*152,y+(i/2)*30,148,24).build());}
+            for(int i=0;i<6;i++){final int t=i;if(mineOnly&&i!=3)continue;addRenderableWidget(Button.builder(Component.literal(RegisteredBuildings.TYPES[i]),v->{if(t==3&&!mineOnly){message="Place a Mine Marker beside the opening to detect rails automatically. Right-click it for output.";valid=false;return;}if(t==4){message="Place a Woodcutter Marker to detect a 15x15 area, 35 blocks up, automatically.";valid=false;return;}type=t;valid=false;send(false);}).bounds(x+(i%2)*152,y+(i/2)*30,148,24).build());}
             addRenderableWidget(Button.builder(Component.literal("Scan building"),v->send(false)).bounds(x,y+137,145,22).build());
             addRenderableWidget(Button.builder(Component.literal("Confirm registration"),v->{if(valid)send(true);}).bounds(x+152,y+137,148,22).build());
             addRenderableWidget(Button.builder(Component.literal("Cancel"),v->onClose()).bounds(x+90,y+169,120,20).build());

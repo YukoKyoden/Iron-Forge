@@ -14,5 +14,6 @@
   "block.kingdomsclaims.storage_expansion": "Warehouse Shelf",
   "itemGroup.kingdomsclaims.main": "Kingdoms & Claims",
   "item.kingdomsclaims.architect_wand": "Kingdom Architect\u2019s Wand",
-  "block.kingdomsclaims.mine_marker": "Mine Marker"
+  "block.kingdomsclaims.mine_marker": "Mine Marker",
+  "block.kingdomsclaims.lumber_marker": "Woodcutter Marker"
 }

@@ -1,4 +1,4 @@
-name: Build Kingdoms and Claims v0.4.27
+name: Build Kingdoms and Claims v0.4.27.1
 on:
   push:
     branches: [kingdoms-claims-v0426-simplification]
@@ -23,13 +23,14 @@ jobs:
         working-directory: mod
         run: |
           mkdir -p build/regression
-          javac --release 17 -d build/regression src/main/java/com/kingdomsclaims/StockpileMath.java tests/StockpileMathTest.java src/main/java/com/kingdomsclaims/ArchitectInputGate.java tests/ArchitectInputGateTest.java src/main/java/com/kingdomsclaims/HouseBuildCost.java tests/HouseBuildCostTest.java src/main/java/com/kingdomsclaims/ProductionWindow.java tests/ProductionWindowTest.java src/main/java/com/kingdomsclaims/ProductionClock.java tests/ProductionClockTest.java src/main/java/com/kingdomsclaims/HousingMath.java tests/HousingMathTest.java src/main/java/com/kingdomsclaims/RailNetwork.java tests/RailNetworkTest.java src/main/java/com/kingdomsclaims/SquadMath.java tests/SquadMathTest.java
+          javac --release 17 -d build/regression src/main/java/com/kingdomsclaims/StockpileMath.java tests/StockpileMathTest.java src/main/java/com/kingdomsclaims/ArchitectInputGate.java tests/ArchitectInputGateTest.java src/main/java/com/kingdomsclaims/HouseBuildCost.java tests/HouseBuildCostTest.java src/main/java/com/kingdomsclaims/ProductionWindow.java tests/ProductionWindowTest.java src/main/java/com/kingdomsclaims/ProductionClock.java tests/ProductionClockTest.java src/main/java/com/kingdomsclaims/HousingMath.java tests/HousingMathTest.java src/main/java/com/kingdomsclaims/RailNetwork.java tests/RailNetworkTest.java src/main/java/com/kingdomsclaims/SquadMath.java tests/SquadMathTest.java src/main/java/com/kingdomsclaims/MarkerArea.java tests/MarkerAreaTest.java
           java -cp build/regression StockpileMathTest
           java -cp build/regression ArchitectInputGateTest
           java -cp build/regression HouseBuildCostTest
           java -cp build/regression ProductionWindowTest
           java -cp build/regression ProductionClockTest
           java -cp build/regression RailNetworkTest
+          java -cp build/regression MarkerAreaTest
           java -cp build/regression SquadMathTest
           java -cp build/regression HousingMathTest
           python3 tests/test_0426.py
@@ -38,11 +39,11 @@ jobs:
         run: gradle --no-daemon --stacktrace clean build ledgerRegression
       - name: Verify compiled JAR
         run: |
-          test -f mod/build/libs/kingdomsclaims-0.4.27.jar
-          jar tf mod/build/libs/kingdomsclaims-0.4.27.jar | grep -q META-INF/mods.toml
-          jar tf mod/build/libs/kingdomsclaims-0.4.27.jar | grep -q com/kingdomsclaims/RegisteredBuildings.class
+          test -f mod/build/libs/kingdomsclaims-0.4.27.1.jar
+          jar tf mod/build/libs/kingdomsclaims-0.4.27.1.jar | grep -q META-INF/mods.toml
+          jar tf mod/build/libs/kingdomsclaims-0.4.27.1.jar | grep -q com/kingdomsclaims/RegisteredBuildings.class
       - uses: actions/upload-artifact@v4
         with:
-          name: KingdomsClaims-v0.4.27-Forge-1.20.1
-          path: mod/build/libs/kingdomsclaims-0.4.27.jar
+          name: KingdomsClaims-v0.4.27.1-Forge-1.20.1
+          path: mod/build/libs/kingdomsclaims-0.4.27.1.jar
           if-no-files-found: error

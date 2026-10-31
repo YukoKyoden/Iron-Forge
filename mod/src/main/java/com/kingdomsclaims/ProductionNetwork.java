@@ -38,11 +38,13 @@ public final class ProductionNetwork {
             if(world==null||!RegisteredBuildings.ownsClaims(world,b,false))status="Paused: territory no longer owned";
             else if(!RegisteredBuildings.owned(world,b))status="Paused: building chunks are unloaded";
             else if(b.dirty)status="Paused: waiting for building validation";
-            else if(b.capacity<=0)status="Paused: invalid building; check its requirements";
+            else if(b.capacity<=0)status="Paused: "+(b.surveyDetail.isEmpty()?"invalid building; check its requirements":b.surveyDetail);
             else if(full)status="Paused: stockpile full";
+            else if(b.autoProducer)status=b.surveyDetail.isEmpty()?"Waiting for six-minute survey":b.surveyDetail;
             else if(b.type.equals("mine"))status=b.capacity+" sections: "+(b.capacity/2.0)+" iron/6m; carry "+(b.halfIron/2.0);
             else status=b.type.equals("farm")?"Passive wheat output; visible crops stay planted":"Producing automatically";
             boolean running=!status.startsWith("Paused");int[] maximum=new int[8];if(b.type.equals("farm"))maximum[3]=b.capacity;if(b.type.equals("mine")){maximum[0]=(b.capacity+b.halfIron)/2;}if(b.type.equals("lumber camp"))maximum[2]=b.capacity;
+            if(status.length()>140)status=status.substring(0,140);
             sources.add(new Source(b.type,b.dimension+" "+b.min.toShortString(),mask,maximum,status,(int)Math.min(3600,Math.max(0,(b.next-now+19)/20)),running));
         }
         // Optional military outposts still supply resources; display them separately from registered structures.
