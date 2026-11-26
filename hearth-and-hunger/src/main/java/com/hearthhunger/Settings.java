@@ -15,7 +15,6 @@ final class Settings {
         P.setProperty("hudOffsetX","0"); P.setProperty("hudOffsetY","0");
         P.setProperty("activityHoldSeconds","1.2");
         P.setProperty("extendedNaturalRegen","true"); P.setProperty("passiveRegenScale","1.0");
-        P.setProperty("passiveHealExhaustion","1.5");
         P.setProperty("growl","true"); P.setProperty("performanceModifiers","true");
         P.setProperty("mealCooldownSeconds","30"); P.setProperty("gradualDigestion","true");
         P.setProperty("restRate","0.5"); P.setProperty("walkRate","1.0"); P.setProperty("workRate","1.5");
@@ -24,6 +23,7 @@ final class Settings {
         try {Files.createDirectories(f.getParent());if(Files.exists(f))try(InputStream in=Files.newInputStream(f)){P.load(in);}
             P.setProperty("sprintRate",Balance.migrateSprintRate(P.getProperty("sprintRate","3.5"),Boolean.parseBoolean(P.getProperty("sprintBalance011Migrated","false"))));
             P.setProperty("sprintBalance011Migrated","true");
+            P.remove("passiveHealExhaustion");
             try(OutputStream out=Files.newOutputStream(f)){P.store(out,"Hearth & Hunger - restart after changes. Server and client should match food/stack options.");}
         }catch(IOException e){System.err.println("[Hearth & Hunger] Config: "+e);}
     }

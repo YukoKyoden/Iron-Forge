@@ -150,14 +150,13 @@ public final class HearthHunger {
         // All natural survival healing is ours; saturation does not determine healing rate.
         if(usesCustomRegen(p)
                 &&p.level().getGameRules().getBoolean(GameRules.RULE_NATURAL_REGENERATION)
-                &&level>6&&p.isAlive()&&p.getHealth()<p.getMaxHealth()){
+                &&level>0&&p.isAlive()&&p.getHealth()<p.getMaxHealth()){
             double bonus=active?t.heal+s.heal:0;
             m.healProgress+=Balance.passiveHealProgress(level,bonus,Settings.num("passiveRegenScale",1,0,5));
-            if(m.healProgress>=1){
-                m.healProgress-=1;
-                float oldHealth=p.getHealth();
+            if(m.healProgress>=1.0-1e-9){
+                m.healProgress=Math.max(0,m.healProgress-1);
+                // Passive healing never adds exhaustion or consumes saturation/food.
                 p.heal(1.0f);
-                if(p.getHealth()>oldHealth)food.addExhaustion((float)Settings.num("passiveHealExhaustion",1.5,0,6));
             }
         }else m.healProgress=0;
         if(p.tickCount%5==0){

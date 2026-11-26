@@ -85,9 +85,10 @@ public final class Balance {
     }
     /** One half-heart per interval, based only on visible food points. */
     public static int passiveHealInterval(int food){
-        if(food<=6)return 0;
-        if(food>=18)return 40+(20-Math.min(food,20))*20;
-        return 120+(17-food)*30;
+        if(food<=0)return 0;
+        if(food>=14)return 20+(20-Math.min(food,20))*5;
+        if(food>=9)return 80+(13-food)*10;
+        return 200+(8-food)*40;
     }
     public static double passiveHealProgress(int food,double bonus,double scale){
         int interval=passiveHealInterval(food);
