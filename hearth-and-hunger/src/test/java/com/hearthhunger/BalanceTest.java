@@ -39,6 +39,12 @@ public final class BalanceTest {
         check(Balance.passiveHealInterval(7)==420,"3.5 bars 21 seconds");
         check(Balance.passiveHealProgress(12,.5,1)>Balance.passiveHealProgress(12,0,1),"meal accelerates passive regen");
         check(Balance.passiveHealProgress(6,1,1)==0&&Balance.passiveHealProgress(12,0,0)==0,"regen disabled when low or configured off");
+        check(Balance.Activity.SPRINT.rate==3.5,"new sprint drain");
+        check(Balance.Activity.WALK.rate==1&&Balance.Activity.REST.rate==.5,"other movement unchanged");
+        check(Balance.migrateSprintRate("5.0",false).equals("3.5"),"migrate old default");
+        check(Balance.migrateSprintRate("2.5",false).equals("2.5"),"preserve custom rate");
+        check(Balance.migrateSprintRate("5.0",true).equals("5.0"),"respect subsequent custom rate");
+        check(Balance.estimateWithVanilla(20,2,0,0,3.5,.0045,.028)>Balance.estimateWithVanilla(20,2,0,0,5,.0045,.028),"sprint endurance improves");
         System.out.println("PASS: "+checks+" balance assertions");
     }
 }

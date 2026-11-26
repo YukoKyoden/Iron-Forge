@@ -19,9 +19,11 @@ final class Settings {
         P.setProperty("growl","true"); P.setProperty("performanceModifiers","true");
         P.setProperty("mealCooldownSeconds","30"); P.setProperty("gradualDigestion","true");
         P.setProperty("restRate","0.5"); P.setProperty("walkRate","1.0"); P.setProperty("workRate","1.5");
-        P.setProperty("fightRate","2.5"); P.setProperty("swimRate","4.0"); P.setProperty("sprintRate","5.0");
+        P.setProperty("fightRate","2.5"); P.setProperty("swimRate","4.0"); P.setProperty("sprintRate","3.5");
         Path f=FMLPaths.CONFIGDIR.get().resolve("hearthhunger.properties");
         try {Files.createDirectories(f.getParent());if(Files.exists(f))try(InputStream in=Files.newInputStream(f)){P.load(in);}
+            P.setProperty("sprintRate",Balance.migrateSprintRate(P.getProperty("sprintRate","3.5"),Boolean.parseBoolean(P.getProperty("sprintBalance011Migrated","false"))));
+            P.setProperty("sprintBalance011Migrated","true");
             try(OutputStream out=Files.newOutputStream(f)){P.store(out,"Hearth & Hunger - restart after changes. Server and client should match food/stack options.");}
         }catch(IOException e){System.err.println("[Hearth & Hunger] Config: "+e);}
     }

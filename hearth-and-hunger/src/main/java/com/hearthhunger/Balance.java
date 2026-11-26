@@ -5,7 +5,7 @@ public final class Balance {
     public enum Activity {
         REST("Resting", .5, 0x82d77c), WALK("Walking", 1, 0xb6d97a),
         WORK("Working", 1.5, 0xe6d071), FIGHT("Fighting", 2.5, 0xe7a153),
-        SWIM("Swimming", 4, 0xe77e54), SPRINT("Sprinting", 5, 0xf06c65);
+        SWIM("Swimming", 4, 0xe77e54), SPRINT("Sprinting", 3.5, 0xf06c65);
         public final String label; public final double rate; public final int color;
         Activity(String l,double r,int c){label=l;rate=r;color=c;}
     }
@@ -91,6 +91,13 @@ public final class Balance {
     public static double passiveHealProgress(int food,double bonus,double scale){
         int interval=passiveHealInterval(food);
         return interval==0?0:(1+Math.max(0,bonus))*Math.max(0,scale)/interval;
+    }
+    /** Upgrade the previous default only, leaving other explicit settings alone. */
+    public static String migrateSprintRate(String configured,boolean alreadyMigrated){
+        if(!alreadyMigrated){
+            try{if(Double.parseDouble(configured)==5.0)return "3.5";}catch(Exception ignored){}
+        }
+        return configured;
     }
     public static boolean advanceDay(int phase){return phase<5;}
 }
