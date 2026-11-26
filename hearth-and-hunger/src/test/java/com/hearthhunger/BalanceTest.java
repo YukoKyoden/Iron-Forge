@@ -24,6 +24,21 @@ public final class BalanceTest {
         check(Balance.estimateWithVanilla(20,2,0,3,5,.0045,.028)>Balance.estimateWithVanilla(20,2,0,0,5,.0045,.028),"reserve under sprinting");
         int advanced=0;for(int i=0;i<38400;i++)if(Balance.advanceDay(i%8))advanced++;
         check(advanced==24000,"32 minute day");
+        Balance.ActivityHold h=new Balance.ActivityHold();
+        check(h.update(Balance.Activity.SPRINT,24)==Balance.Activity.SPRINT,"sprint immediate");
+        for(int i=0;i<23;i++)check(h.update(i%2==0?Balance.Activity.WALK:Balance.Activity.REST,24)==Balance.Activity.SPRINT,"hold through sprint jitter "+i);
+        check(h.update(Balance.Activity.SPRINT,24)==Balance.Activity.SPRINT,"sprint resumes");
+        for(int i=0;i<23;i++)h.update(Balance.Activity.WALK,24);
+        check(h.update(Balance.Activity.WALK,24)==Balance.Activity.WALK,"release after 1.2s");
+        check(h.update(Balance.Activity.FIGHT,24)==Balance.Activity.FIGHT,"higher effort immediate");
+        check(h.update(Balance.Activity.REST,0)==Balance.Activity.REST,"immediate rest when seated");
+        check(Balance.passiveHealInterval(6)==0&&Balance.passiveHealInterval(0)==0,"no passive heal at three bars");
+        check(Balance.passiveHealInterval(18)==0&&Balance.passiveHealInterval(20)==0,"vanilla owns high-hunger heal");
+        check(Balance.passiveHealInterval(17)==120,"8.5 bars six seconds");
+        check(Balance.passiveHealInterval(12)==270,"six bars 13.5 seconds");
+        check(Balance.passiveHealInterval(7)==420,"3.5 bars 21 seconds");
+        check(Balance.passiveHealProgress(12,.5,1)>Balance.passiveHealProgress(12,0,1),"meal accelerates passive regen");
+        check(Balance.passiveHealProgress(6,1,1)==0&&Balance.passiveHealProgress(12,0,0)==0,"regen disabled when low or configured off");
         System.out.println("PASS: "+checks+" balance assertions");
     }
 }

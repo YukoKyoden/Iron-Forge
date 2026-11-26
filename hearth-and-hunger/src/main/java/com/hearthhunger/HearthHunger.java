@@ -63,7 +63,8 @@ public final class HearthHunger {
         });
     }
     static final class Motion {
-        int work,fight,prevFood=20,preEatFood=-1;double x,z;boolean first=true;Balance.Activity activity=Balance.Activity.REST;
+        int work,fight,prevFood=20,preEatFood=-1;double x,z,healProgress;boolean first=true;
+        final Balance.ActivityHold activityHold=new Balance.ActivityHold();
     }
     Motion motion(ServerPlayer p){return motions.computeIfAbsent(p.getUUID(),u->new Motion());}
     private void logout(PlayerEvent.PlayerLoggedOutEvent e){motions.remove(e.getEntity().getUUID());}
@@ -106,10 +107,12 @@ public final class HearthHunger {
         int ticks=d.getInt("Ticks");Balance.Tier t=tier(d);Balance.Style s=style(d);
         double dx=p.getX()-m.x,dz=p.getZ()-m.z;boolean moving=!m.first&&dx*dx+dz*dz>.0004;
         m.x=p.getX();m.z=p.getZ();m.first=false;
-        Balance.Activity a=p.isSleeping()||p.isPassenger()?Balance.Activity.REST:
+        Balance.Activity raw=p.isSleeping()||p.isPassenger()?Balance.Activity.REST:
             p.isSwimming()?Balance.Activity.SWIM:p.isSprinting()&&moving?Balance.Activity.SPRINT:
             m.fight>0?Balance.Activity.FIGHT:m.work>0?Balance.Activity.WORK:moving?Balance.Activity.WALK:Balance.Activity.REST;
-        m.activity=a;if(m.work>0)m.work--;if(m.fight>0)m.fight--;
+        int hold=(p.isSleeping()||p.isPassenger())?0:(int)Math.round(Settings.num("activityHoldSeconds",1.2,0,5)*20);
+        Balance.Activity a=m.activityHold.update(raw,hold);
+        if(m.work>0)m.work--;if(m.fight>0)m.fight--;
         boolean exempt=p.isCreative()||p.isSpectator();
         if(!exempt&&d.getInt("Cooldown")>0)d.putInt("Cooldown",d.getInt("Cooldown")-1);
         if(!exempt&&Settings.on("gradualDigestion")&&d.getInt("Digest")>0&&p.tickCount%200==0&&level<20){
@@ -138,6 +141,20 @@ public final class HearthHunger {
             p.level().playSound(null,p.getX(),p.getY(),p.getZ(),SoundEvents.PLAYER_BURP,SoundSource.PLAYERS,.3f,.5f);
         }
         m.prevFood=level;
+        // The vanilla FoodData tick owns natural healing at 18+ food points.
+        // Below that threshold extend it without changing gamerules or other healing sources.
+        if(!exempt&&Settings.on("extendedNaturalRegen")&&p.level().getDifficulty()!=Difficulty.PEACEFUL
+                &&p.level().getGameRules().getBoolean(GameRules.RULE_NATURAL_REGENERATION)
+                &&level>6&&level<18&&p.isAlive()&&p.getHealth()<p.getMaxHealth()){
+            double bonus=active?t.heal+s.heal:0;
+            m.healProgress+=Balance.passiveHealProgress(level,bonus,Settings.num("passiveRegenScale",1,0,5));
+            if(m.healProgress>=1){
+                m.healProgress-=1;
+                float oldHealth=p.getHealth();
+                p.heal(1.0f);
+                if(p.getHealth()>oldHealth)food.addExhaustion((float)Settings.num("passiveHealExhaustion",1.5,0,6));
+            }
+        }else m.healProgress=0;
         if(p.tickCount%5==0){
             int secs=-1;
             if(!exempt&&Settings.on("activityHunger")&&rate>0&&p.level().getDifficulty()!=Difficulty.PEACEFUL){

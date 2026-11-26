@@ -71,5 +71,26 @@ public final class Balance {
         return reserveSeconds+Math.max(0,units-reserveSeconds*vanillaPerSecond)/(base*rate*20+vanillaPerSecond);
     }
     public static int reducedNutrition(int n,double multiplier){return n<=1?n:Math.max(1,(int)Math.round(n*multiplier));}
+    /** Higher activity is immediate; a continuous quiet window is required to step down. */
+    public static final class ActivityHold {
+        private Activity current=Activity.REST;
+        private int quietTicks;
+        public Activity update(Activity raw,int holdTicks){
+            if(raw==current){quietTicks=0;return current;}
+            if(raw.ordinal()>current.ordinal()||holdTicks<=0||++quietTicks>=holdTicks){
+                current=raw;quietTicks=0;
+            }
+            return current;
+        }
+    }
+    /** One half-heart per interval; 18+ food points use native healing instead. */
+    public static int passiveHealInterval(int food){
+        if(food<=6||food>=18)return 0;
+        return 120+(17-food)*30;
+    }
+    public static double passiveHealProgress(int food,double bonus,double scale){
+        int interval=passiveHealInterval(food);
+        return interval==0?0:(1+Math.max(0,bonus))*Math.max(0,scale)/interval;
+    }
     public static boolean advanceDay(int phase){return phase<5;}
 }

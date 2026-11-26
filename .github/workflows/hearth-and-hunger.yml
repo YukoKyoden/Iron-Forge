@@ -27,10 +27,10 @@ jobs:
       - name: Verify JAR
         working-directory: hearth-and-hunger
         run: |
-          test -f build/libs/hearth-and-hunger-0.1.0.jar
-          jar tf build/libs/hearth-and-hunger-0.1.0.jar | grep 'META-INF/neoforge.mods.toml'
+          test -f build/libs/hearth-and-hunger-0.1.1.jar
+          jar tf build/libs/hearth-and-hunger-0.1.1.jar | grep 'META-INF/neoforge.mods.toml'
       - uses: actions/upload-artifact@v4
         with:
-          name: hearth-and-hunger-0.1.0
+          name: hearth-and-hunger-0.1.1
           path: hearth-and-hunger/build/libs/*.jar
           if-no-files-found: error

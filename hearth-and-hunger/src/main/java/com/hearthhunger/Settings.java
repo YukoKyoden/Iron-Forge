@@ -13,6 +13,9 @@ final class Settings {
         P.setProperty("vanillaSaturationMultiplier","0.80"); P.setProperty("stackLimits","true");
         P.setProperty("replaceNourishment","true"); P.setProperty("hud","true");
         P.setProperty("hudOffsetX","0"); P.setProperty("hudOffsetY","0");
+        P.setProperty("activityHoldSeconds","1.2");
+        P.setProperty("extendedNaturalRegen","true"); P.setProperty("passiveRegenScale","1.0");
+        P.setProperty("passiveHealExhaustion","1.5");
         P.setProperty("growl","true"); P.setProperty("performanceModifiers","true");
         P.setProperty("mealCooldownSeconds","30"); P.setProperty("gradualDigestion","true");
         P.setProperty("restRate","0.5"); P.setProperty("walkRate","1.0"); P.setProperty("workRate","1.5");

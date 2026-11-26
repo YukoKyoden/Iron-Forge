@@ -18,18 +18,25 @@ public final class ClientHud {
         Minecraft mc=Minecraft.getInstance();HungerSync s=HungerSync.latest;
         if(!Settings.on("hud")||s==null||mc.player==null||mc.options.hideGui||mc.player.isCreative()||mc.player.isSpectator())return;
         GuiGraphics g=e.getGuiGraphics();
-        int x=g.guiWidth()/2+10+(int)Settings.num("hudOffsetX",0,-500,500),y=g.guiHeight()-53+(int)Settings.num("hudOffsetY",0,-500,500);
+        int right=g.guiWidth()/2+91+(int)Settings.num("hudOffsetX",0,-500,500);
+        int x=right-82,y=g.guiHeight()-53+(int)Settings.num("hudOffsetY",0,-500,500);
         if(mc.player.isPassenger())y-=20;
         if(mc.player.isUnderWater()||mc.player.getAirSupply()<mc.player.getMaxAirSupply())y-=10;
         Balance.Activity a=Balance.Activity.values()[Math.clamp(s.activity(),0,Balance.Activity.values().length-1)];
-        int color=0xff000000|a.color;
+        int color=0xff000000|a.color,food=mc.player.getFoodData().getFoodLevel();
+        String label=switch(a){case REST->"Rest";case WALK->"Walk";case WORK->"Work";case FIGHT->"Fight";case SWIM->"Swim";case SPRINT->"Run";};
+        String timer=s.seconds()<0?"--:--":s.seconds()==0?(food<=6?"Low":"Hungry"):time(s.seconds());
         icon(g,x,y,a,color);
-        String text=a.label+" "+(s.seconds()<0?"--:--":s.seconds()==0?"Hungry":"~"+time(s.seconds()));
-        if(mc.player.getFoodData().getFoodLevel()<=6&&(mc.player.tickCount/10)%2==0)color=0xffff7777;
-        g.drawString(mc.font,text,x+11,y,color,true);
+        g.drawString(mc.font,label,x+11,y,0xffededed,true);
+        g.drawString(mc.font,timer,right-mc.font.width(timer),y,food<=6?0xffff7777:color,true);
         if(s.mealTicks()>0&&!s.meal().isEmpty()){
-            String name=s.meal();if(mc.font.width(name)>80)name=mc.font.plainSubstrByWidth(name,76)+"…";
-            g.drawString(mc.font,name+" "+time((s.mealTicks()+19)/20),x,y-11,mc.player.getFoodData().getFoodLevel()<=6?0xff999999:0xffe9ca82,true);
+            String remaining=time((s.mealTicks()+19)/20);
+            int room=Math.max(8,82-mc.font.width(remaining)-5);
+            String name=s.meal();
+            if(mc.font.width(name)>room)name=mc.font.plainSubstrByWidth(name,Math.max(1,room-mc.font.width("…")))+"…";
+            int mealColor=food<=6?0xff999999:0xffe9ca82;
+            g.drawString(mc.font,name,x,y-11,mealColor,true);
+            g.drawString(mc.font,remaining,right-mc.font.width(remaining),y-11,mealColor,true);
         }
     }
     static String time(int s){return String.format(Locale.ROOT,"%d:%02d",s/60,s%60);}
