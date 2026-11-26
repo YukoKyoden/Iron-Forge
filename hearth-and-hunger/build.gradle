@@ -1,0 +1,23 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.148'
+}
+group = 'com.hearthhunger'
+version = '0.1.0'
+base { archivesName = 'hearth-and-hunger' }
+java { toolchain { languageVersion = JavaLanguageVersion.of(21) } }
+neoForge {
+    version = '21.1.200'
+    runs {
+        client { client() }
+        server { server(); programArgument '--nogui' }
+    }
+    mods { hearthhunger { sourceSet sourceSets.main } }
+}
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+tasks.register('balanceTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.hearthhunger.BalanceTest'
+}
+tasks.named('check') { dependsOn 'balanceTest' }
