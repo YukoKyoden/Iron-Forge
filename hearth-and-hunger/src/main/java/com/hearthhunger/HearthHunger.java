@@ -155,8 +155,18 @@ public final class HearthHunger {
             m.healProgress+=Balance.passiveHealProgress(level,bonus,Settings.num("passiveRegenScale",1,0,5));
             if(m.healProgress>=1.0-1e-9){
                 m.healProgress=Math.max(0,m.healProgress-1);
-                // Passive healing never adds exhaustion or consumes saturation/food.
+                float before=p.getHealth();
                 p.heal(1.0f);
+                double restored=Math.max(0,p.getHealth()-before);
+                if(restored>0){
+                    Balance.HealingCost cost=Balance.healingCost(d.getDouble("HealingFoodProgress"),restored);
+                    d.putDouble("HealingFoodProgress",cost.remainder());
+                    if(cost.foodPoints()>0){
+                        // Charge the visible hunger bar directly, bypassing saturation.
+                        level=Math.max(0,food.getFoodLevel()-cost.foodPoints());
+                        food.setFoodLevel(level);
+                    }
+                }
             }
         }else m.healProgress=0;
         if(p.tickCount%5==0){
