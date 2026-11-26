@@ -56,16 +56,16 @@ public final class BalanceTest {
         check(Balance.migrateSprintRate("2.5",false).equals("2.5"),"preserve custom rate");
         check(Balance.migrateSprintRate("5.0",true).equals("5.0"),"respect subsequent custom rate");
         check(Balance.estimateWithVanilla(20,2,0,0,3.5,.0045,.028)>Balance.estimateWithVanilla(20,2,0,0,5,.0045,.028),"sprint endurance improves");
-        var c1=Balance.healingCost(0,10);
-        check(c1.foodPoints()==0&&c1.remainder()==10,"five hearts do not yet charge");
+        var c1=Balance.healingCost(0,12);
+        check(c1.foodPoints()==0&&c1.remainder()==12,"six hearts do not yet charge");
         var c2=Balance.healingCost(c1.remainder(),1);
-        check(c2.foodPoints()==2&&c2.remainder()==0,"5.5 hearts cost one visible hunger bar");
-        var c3=Balance.healingCost(10.75,.5);
+        check(c2.foodPoints()==2&&c2.remainder()==0,"6.5 hearts cost one visible hunger bar");
+        var c3=Balance.healingCost(12.75,.5);
         check(c3.foodPoints()==2&&Math.abs(c3.remainder()-.25)<1e-8,"fractional actual healing carries forward");
         var c4=Balance.healingCost(5,0);
         check(c4.foodPoints()==0&&c4.remainder()==5,"no cost for zero actual healing");
-        var c5=Balance.healingCost(0,22);
-        check(c5.foodPoints()==4&&c5.remainder()==0,"eleven hearts cost two bars");
+        var c5=Balance.healingCost(0,26);
+        check(c5.foodPoints()==4&&c5.remainder()==0,"thirteen hearts cost two bars");
         System.out.println("PASS: "+checks+" balance assertions");
     }
 }

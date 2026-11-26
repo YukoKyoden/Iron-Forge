@@ -27,12 +27,12 @@ jobs:
       - name: Verify JAR
         working-directory: hearth-and-hunger
         run: |
-          test -f build/libs/hearth-and-hunger-0.1.5.jar
-          jar tf build/libs/hearth-and-hunger-0.1.5.jar | grep 'META-INF/neoforge.mods.toml'
-          jar tf build/libs/hearth-and-hunger-0.1.5.jar | grep 'hearthhunger.mixins.json'
-          jar tf build/libs/hearth-and-hunger-0.1.5.jar | grep 'com/hearthhunger/mixin/FoodDataMixin.class'
+          test -f build/libs/hearth-and-hunger-0.1.6.jar
+          jar tf build/libs/hearth-and-hunger-0.1.6.jar | grep 'META-INF/neoforge.mods.toml'
+          jar tf build/libs/hearth-and-hunger-0.1.6.jar | grep 'hearthhunger.mixins.json'
+          jar tf build/libs/hearth-and-hunger-0.1.6.jar | grep 'com/hearthhunger/mixin/FoodDataMixin.class'
       - uses: actions/upload-artifact@v4
         with:
-          name: hearth-and-hunger-0.1.5
+          name: hearth-and-hunger-0.1.6
           path: hearth-and-hunger/build/libs/*.jar
           if-no-files-found: error

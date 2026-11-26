@@ -94,12 +94,12 @@ public final class Balance {
         int interval=passiveHealInterval(food);
         return interval==0?0:(1+Math.max(0,bonus))*Math.max(0,scale)/interval;
     }
-    /** Eleven health points = 5.5 hearts; two food points = one visible drumstick. */
+    /** Thirteen health points = 6.5 hearts; two food points = one visible drumstick. */
     public record HealingCost(int foodPoints,double remainder){}
     public static HealingCost healingCost(double carried,double restored){
         double total=Math.max(0,carried)+Math.max(0,restored);
-        int batches=(int)Math.floor((total+1e-7)/11);
-        return new HealingCost(batches*2,Math.max(0,total-batches*11));
+        int batches=(int)Math.floor((total+1e-7)/13);
+        return new HealingCost(batches*2,Math.max(0,total-batches*13));
     }
     /** Upgrade the previous default only, leaving other explicit settings alone. */
     public static String migrateSprintRate(String configured,boolean alreadyMigrated){
