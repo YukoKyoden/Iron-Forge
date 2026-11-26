@@ -33,7 +33,10 @@ public final class BalanceTest {
         check(h.update(Balance.Activity.FIGHT,24)==Balance.Activity.FIGHT,"higher effort immediate");
         check(h.update(Balance.Activity.REST,0)==Balance.Activity.REST,"immediate rest when seated");
         check(Balance.passiveHealInterval(6)==0&&Balance.passiveHealInterval(0)==0,"no passive heal at three bars");
-        check(Balance.passiveHealInterval(18)==0&&Balance.passiveHealInterval(20)==0,"vanilla owns high-hunger heal");
+        check(Balance.passiveHealInterval(18)==80&&Balance.passiveHealInterval(19)==60&&Balance.passiveHealInterval(20)==40,"full hunger uses custom healing");
+        check(Balance.passiveHealProgress(20,0,1)==1.0/40,"full hunger independent of saturation");
+        check(Balance.passiveHealProgress(20,.5,1)==1.5/40,"full hunger meal bonus once");
+        for(int n=7;n<20;n++)check(Balance.passiveHealInterval(n)>Balance.passiveHealInterval(n+1),"heal speed increases with food "+n);
         check(Balance.passiveHealInterval(17)==120,"8.5 bars six seconds");
         check(Balance.passiveHealInterval(12)==270,"six bars 13.5 seconds");
         check(Balance.passiveHealInterval(7)==420,"3.5 bars 21 seconds");

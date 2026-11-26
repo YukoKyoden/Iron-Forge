@@ -8,6 +8,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.ai.attributes.*;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.food.FoodData;
 import net.minecraft.world.item.ItemStack;
@@ -46,6 +47,11 @@ public final class HearthHunger {
         bus.addListener(this::tick);bus.addListener(this::eaten);bus.addListener(this::startEating);bus.addListener(this::heal);
         bus.addListener(this::attack);bus.addListener(this::breakBlock);bus.addListener(this::placed);
         bus.addListener(this::speed);bus.addListener(this::beforeServer);bus.addListener(this::afterServer);bus.addListener(this::logout);
+    }
+    /** Shared gate for the FoodData mixin and our server-side replacement. */
+    public static boolean usesCustomRegen(Player p){
+        return Settings.on("extendedNaturalRegen")&&!p.isCreative()&&!p.isSpectator()
+            &&p.level().getDifficulty()!=Difficulty.PEACEFUL;
     }
     static CompoundTag state(ServerPlayer p){CompoundTag root=p.getPersistentData();if(!root.contains(KEY))root.put(KEY,new CompoundTag());return root.getCompound(KEY);}
     static Balance.Profile profile(ItemStack stack,FoodProperties f){return Settings.profile(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString(),f.nutrition());}
@@ -141,11 +147,10 @@ public final class HearthHunger {
             p.level().playSound(null,p.getX(),p.getY(),p.getZ(),SoundEvents.PLAYER_BURP,SoundSource.PLAYERS,.3f,.5f);
         }
         m.prevFood=level;
-        // The vanilla FoodData tick owns natural healing at 18+ food points.
-        // Below that threshold extend it without changing gamerules or other healing sources.
-        if(!exempt&&Settings.on("extendedNaturalRegen")&&p.level().getDifficulty()!=Difficulty.PEACEFUL
+        // All natural survival healing is ours; saturation does not determine healing rate.
+        if(usesCustomRegen(p)
                 &&p.level().getGameRules().getBoolean(GameRules.RULE_NATURAL_REGENERATION)
-                &&level>6&&level<18&&p.isAlive()&&p.getHealth()<p.getMaxHealth()){
+                &&level>6&&p.isAlive()&&p.getHealth()<p.getMaxHealth()){
             double bonus=active?t.heal+s.heal:0;
             m.healProgress+=Balance.passiveHealProgress(level,bonus,Settings.num("passiveRegenScale",1,0,5));
             if(m.healProgress>=1){
@@ -173,7 +178,7 @@ public final class HearthHunger {
         if(amount!=0)i.addTransientModifier(new AttributeModifier(key,amount,AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
     }
     private void heal(LivingHealEvent e){
-        if(!(e.getEntity() instanceof ServerPlayer p)||p.isCreative()||p.isSpectator()||!Settings.on("mealBuffs"))return;
+        if(!(e.getEntity() instanceof ServerPlayer p)||p.isCreative()||p.isSpectator()||!Settings.on("mealBuffs")||usesCustomRegen(p))return;
         CompoundTag d=state(p);
         if(p.getFoodData().getFoodLevel()>=18&&Balance.mealActive(p.getFoodData().getFoodLevel(),d.getInt("Ticks"))&&!p.hasEffect(MobEffects.REGENERATION))
             e.setAmount((float)(e.getAmount()*(1+tier(d).heal+style(d).heal)));

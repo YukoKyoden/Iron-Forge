@@ -1,4 +1,4 @@
-# Hearth & Hunger 0.1.2
+# Hearth & Hunger 0.1.3
 Minecraft 1.21.1, NeoForge 21.1.200+, Java 21. Independent of Iron Forge.
 Build using Gradle 8.10.2: gradle clean build. Install the resulting jar on both client and server.
 Farmer's Delight is optional; other food mods are classified by item ID with overrides in config/hearthhunger.properties. Example: food.farmersdelight\:beef_stew=FULL,MEAT,4.
@@ -11,3 +11,6 @@ Features: 32-minute daylight cycle, activity-based hunger, countdown and activit
 
 ## 0.1.2
 - Sprint activity hunger multiplier reduced from 5.0 to 3.5. Vanilla sprint exhaustion remains unchanged. Existing configs using the old 5.0 default migrate once; other custom values remain intact.
+
+## 0.1.3
+- Replaces vanilla natural survival healing at every hunger level, independent of saturation. Half-heart every 2 seconds at full hunger, 3 seconds at 9.5 bars, 4 seconds at 9 bars, and previous slower rates below. No natural healing at 3 bars or below. Meal bonuses accelerate healing frequency. External healing, starvation and saturation's hunger-buffer role remain unchanged. Natural regeneration gamerule and Peaceful are respected. Other mods replacing FoodData may conflict.

@@ -83,9 +83,10 @@ public final class Balance {
             return current;
         }
     }
-    /** One half-heart per interval; 18+ food points use native healing instead. */
+    /** One half-heart per interval, based only on visible food points. */
     public static int passiveHealInterval(int food){
-        if(food<=6||food>=18)return 0;
+        if(food<=6)return 0;
+        if(food>=18)return 40+(20-Math.min(food,20))*20;
         return 120+(17-food)*30;
     }
     public static double passiveHealProgress(int food,double bonus,double scale){
